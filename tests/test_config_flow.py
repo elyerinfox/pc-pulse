@@ -93,6 +93,8 @@ async def test_reauth(hass: HomeAssistant, mock_client: AsyncMock) -> None:
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reauth_successful"
     assert entry.data[CONF_TOKEN] == "newtoken"
+    # Let the reload triggered by the reauth finish before teardown.
+    await hass.async_block_till_done()
 
 
 async def test_options(hass: HomeAssistant, mock_client: AsyncMock) -> None:
