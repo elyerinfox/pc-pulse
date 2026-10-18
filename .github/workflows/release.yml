@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  agent:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            exe: pc-pulse.exe
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            exe: pc-pulse
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+            exe: pc-pulse
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            exe: pc-pulse
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            exe: pc-pulse
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: cargo build --release --target ${{ matrix.target }}
+      - name: Package
+        shell: bash
+        run: |
+          name="pc-pulse-${{ github.event.release.tag_name }}-${{ matrix.target }}"
+          mkdir "$name"
+          cp "target/${{ matrix.target }}/release/${{ matrix.exe }}" README.md agent.example.toml "$name/"
+          if [[ "${{ matrix.os }}" == windows* ]]; then
+            7z a "$name.zip" "$name"
+            echo "ASSET=$name.zip" >> "$GITHUB_ENV"
+          else
+            tar czf "$name.tar.gz" "$name"
+            echo "ASSET=$name.tar.gz" >> "$GITHUB_ENV"
+          fi
+      - run: gh release upload "${{ github.event.release.tag_name }}" "${{ env.ASSET }}"
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Zip integration
+        run: cd custom_components/pc_pulse && zip -r ../../pc_pulse.zip .
+      - run: gh release upload "${{ github.event.release.tag_name }}" pc_pulse.zip
+        env:
+          GH_TOKEN: ${{ github.token }}

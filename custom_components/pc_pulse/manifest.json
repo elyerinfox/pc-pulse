@@ -1,0 +1,14 @@
+{
+  "domain": "pc_pulse",
+  "name": "PC Pulse",
+  "codeowners": ["@elyerinfox"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/elyerinfox/pc-pulse",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/elyerinfox/pc-pulse/issues",
+  "requirements": [],
+  "version": "0.1.0",
+  "zeroconf": ["_pc-pulse._tcp.local."]
+}

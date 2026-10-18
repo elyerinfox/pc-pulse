@@ -1,0 +1,31 @@
+# pc-pulse agent configuration.
+# The agent creates this file on first run (see `pc-pulse info` for its location).
+
+# Stable id used by Home Assistant. Don't change it after adding the computer.
+id = "generated-on-first-run"
+# Name shown in Home Assistant.
+name = "Gaming PC"
+
+bind = "0.0.0.0"
+port = 8752
+# Home Assistant must send this token. Rotate with `pc-pulse regenerate-token`.
+token = "generated-on-first-run"
+
+# Seconds between samples.
+refresh_interval_secs = 2
+# How many top processes (by CPU and memory) to report.
+top_processes = 10
+# Seconds without keyboard/mouse input before the user counts as inactive.
+active_threshold_secs = 300
+# Advertise the agent so Home Assistant discovers it automatically.
+mdns = true
+
+# Allow shutdown, restart, sleep, hibernate, lock, log off and display control.
+allow_power = true
+# Allow killing processes.
+allow_kill = true
+
+# Commands Home Assistant may run. Each becomes a button. Only these can be run.
+[commands]
+open_steam = "start steam://open/main"
+# Linux example: lock_and_mute = "loginctl lock-session && pactl set-sink-mute @DEFAULT_SINK@ 1"

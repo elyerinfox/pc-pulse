@@ -1,0 +1,97 @@
+power:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: pc_pulse
+          multiple: true
+    action:
+      required: true
+      selector:
+        select:
+          translation_key: action
+          options:
+            - shutdown
+            - restart
+            - sleep
+            - hibernate
+            - lock
+            - logoff
+            - monitor_off
+            - monitor_on
+    delay:
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: s
+
+wake:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: pc_pulse
+          multiple: true
+
+kill_process:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: pc_pulse
+          multiple: true
+    pid:
+      selector:
+        number:
+          min: 0
+          max: 4294967295
+          mode: box
+    name:
+      example: notepad.exe
+      selector:
+        text:
+
+run_command:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: pc_pulse
+          multiple: true
+    command:
+      required: true
+      example: open_steam
+      selector:
+        text:
+
+get_processes:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: pc_pulse
+          multiple: true
+    sort:
+      default: cpu
+      selector:
+        select:
+          translation_key: sort
+          options:
+            - cpu
+            - memory
+            - name
+            - pid
+    limit:
+      default: 25
+      selector:
+        number:
+          min: 1
+          max: 1000
+          mode: box

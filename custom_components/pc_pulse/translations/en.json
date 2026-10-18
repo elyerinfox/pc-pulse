@@ -1,0 +1,186 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Connect to a computer",
+        "description": "Run `pc-pulse info` on the computer to see its host, port and token.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "token": "Token"
+        },
+        "data_description": {
+          "host": "IP address or hostname of the computer running the agent.",
+          "token": "Access token from the agent's config file."
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Discovered {name}",
+        "description": "Found the agent on {name} ({host}). Enter its token to finish setup. Run `pc-pulse info` on that computer to see it.",
+        "data": {
+          "token": "Token"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate {name}",
+        "description": "The agent rejected the token. Enter the current token from `pc-pulse info`.",
+        "data": {
+          "token": "Token"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure computer",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "token": "Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the agent. Check the host, port and firewall.",
+      "invalid_auth": "The token was rejected.",
+      "unknown": "Unexpected error from the agent."
+    },
+    "abort": {
+      "already_configured": "This computer is already configured.",
+      "not_supported": "This device is not a supported agent.",
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Reconfiguration was successful.",
+      "wrong_computer": "That address belongs to a different computer."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Computer options",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "mac": "MAC address for Wake-on-LAN",
+          "broadcast_address": "Wake-on-LAN broadcast address"
+        },
+        "data_description": {
+          "mac": "Leave empty to use the MAC address reported by the agent.",
+          "broadcast_address": "Use the subnet broadcast (e.g. 192.168.1.255) if the default does not work."
+        }
+      }
+    },
+    "error": {
+      "invalid_mac": "Invalid MAC address."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "online": { "name": "Online" },
+      "user_active": { "name": "User active" },
+      "screen_lock": { "name": "Screen lock" }
+    },
+    "button": {
+      "shutdown": { "name": "Shut down" },
+      "restart": { "name": "Restart" },
+      "sleep": { "name": "Sleep" },
+      "hibernate": { "name": "Hibernate" },
+      "lock": { "name": "Lock" },
+      "logoff": { "name": "Log off" },
+      "monitor_off": { "name": "Turn off displays" },
+      "monitor_on": { "name": "Wake displays" },
+      "wake": { "name": "Wake-on-LAN" },
+      "command": { "name": "Run {name}" }
+    },
+    "sensor": {
+      "cpu_usage": { "name": "CPU usage" },
+      "cpu_frequency": { "name": "CPU frequency" },
+      "cpu_temperature": { "name": "CPU temperature" },
+      "load_1m": { "name": "Load (1m)" },
+      "memory_usage": { "name": "Memory usage" },
+      "memory_used": { "name": "Memory used" },
+      "memory_available": { "name": "Memory available" },
+      "swap_usage": { "name": "Swap usage" },
+      "network_download": { "name": "Download speed" },
+      "network_upload": { "name": "Upload speed" },
+      "network_received": { "name": "Data received" },
+      "network_sent": { "name": "Data sent" },
+      "process_count": { "name": "Processes" },
+      "top_process_cpu": { "name": "Top process (CPU)" },
+      "top_process_memory": { "name": "Top process (memory)" },
+      "idle_time": { "name": "Idle time" },
+      "last_active": { "name": "Last active" },
+      "users": { "name": "Logged-in users" },
+      "last_boot": { "name": "Last boot" },
+      "os": { "name": "Operating system" },
+      "ip_address": { "name": "IP address" },
+      "agent_version": { "name": "Agent version" },
+      "disk_usage": { "name": "Disk usage {mount}" }
+    },
+    "switch": {
+      "power": { "name": "Power" }
+    }
+  },
+  "services": {
+    "power": {
+      "name": "Power action",
+      "description": "Shut down, restart, sleep, hibernate, lock or log off a computer.",
+      "fields": {
+        "device_id": { "name": "Computer", "description": "The computer(s) to act on." },
+        "action": { "name": "Action", "description": "What to do." },
+        "delay": { "name": "Delay", "description": "Seconds to wait before doing it." }
+      }
+    },
+    "wake": {
+      "name": "Wake",
+      "description": "Send a Wake-on-LAN packet to a computer.",
+      "fields": {
+        "device_id": { "name": "Computer", "description": "The computer(s) to wake." }
+      }
+    },
+    "kill_process": {
+      "name": "Kill process",
+      "description": "Terminate processes on a computer by PID or name.",
+      "fields": {
+        "device_id": { "name": "Computer", "description": "The computer(s) to act on." },
+        "pid": { "name": "PID", "description": "Process ID to kill." },
+        "name": { "name": "Name", "description": "Kill every process with this name (e.g. notepad or notepad.exe)." }
+      }
+    },
+    "run_command": {
+      "name": "Run command",
+      "description": "Run a command defined in the agent's config file.",
+      "fields": {
+        "device_id": { "name": "Computer", "description": "The computer(s) to act on." },
+        "command": { "name": "Command", "description": "Name of the command in the agent's [commands] table." }
+      }
+    },
+    "get_processes": {
+      "name": "Get processes",
+      "description": "Return the running processes of a computer.",
+      "fields": {
+        "device_id": { "name": "Computer", "description": "The computer(s) to query." },
+        "sort": { "name": "Sort by", "description": "Sort order." },
+        "limit": { "name": "Limit", "description": "Maximum number of processes per computer." }
+      }
+    }
+  },
+  "selector": {
+    "action": {
+      "options": {
+        "shutdown": "Shut down",
+        "restart": "Restart",
+        "sleep": "Sleep",
+        "hibernate": "Hibernate",
+        "lock": "Lock",
+        "logoff": "Log off",
+        "monitor_off": "Turn off displays",
+        "monitor_on": "Wake displays"
+      }
+    },
+    "sort": {
+      "options": {
+        "cpu": "CPU",
+        "memory": "Memory",
+        "name": "Name",
+        "pid": "PID"
+      }
+    }
+  }
+}

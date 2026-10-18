@@ -1,0 +1,52 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "user_active": { "default": "mdi:account-off", "state": { "on": "mdi:account" } }
+    },
+    "button": {
+      "shutdown": { "default": "mdi:power" },
+      "sleep": { "default": "mdi:power-sleep" },
+      "hibernate": { "default": "mdi:snowflake" },
+      "lock": { "default": "mdi:lock" },
+      "logoff": { "default": "mdi:logout" },
+      "monitor_off": { "default": "mdi:monitor-off" },
+      "monitor_on": { "default": "mdi:monitor" },
+      "wake": { "default": "mdi:lan-connect" },
+      "command": { "default": "mdi:console" }
+    },
+    "sensor": {
+      "cpu_usage": { "default": "mdi:cpu-64-bit" },
+      "cpu_frequency": { "default": "mdi:speedometer" },
+      "load_1m": { "default": "mdi:gauge" },
+      "memory_usage": { "default": "mdi:memory" },
+      "memory_used": { "default": "mdi:memory" },
+      "memory_available": { "default": "mdi:memory" },
+      "swap_usage": { "default": "mdi:swap-horizontal" },
+      "network_download": { "default": "mdi:download-network" },
+      "network_upload": { "default": "mdi:upload-network" },
+      "network_received": { "default": "mdi:download" },
+      "network_sent": { "default": "mdi:upload" },
+      "process_count": { "default": "mdi:application-cog" },
+      "top_process_cpu": { "default": "mdi:chart-bar" },
+      "top_process_memory": { "default": "mdi:chart-bar" },
+      "idle_time": { "default": "mdi:timer-sand" },
+      "last_active": { "default": "mdi:account-clock" },
+      "users": { "default": "mdi:account-multiple" },
+      "last_boot": { "default": "mdi:restart" },
+      "os": { "default": "mdi:desktop-tower-monitor" },
+      "ip_address": { "default": "mdi:ip-network" },
+      "agent_version": { "default": "mdi:information-outline" },
+      "disk_usage": { "default": "mdi:harddisk" }
+    },
+    "switch": {
+      "power": { "default": "mdi:desktop-classic" }
+    }
+  },
+  "services": {
+    "power": { "service": "mdi:power" },
+    "wake": { "service": "mdi:lan-connect" },
+    "kill_process": { "service": "mdi:close-octagon" },
+    "run_command": { "service": "mdi:console" },
+    "get_processes": { "service": "mdi:format-list-bulleted" }
+  }
+}
