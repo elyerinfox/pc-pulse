@@ -31,6 +31,8 @@ pub struct Config {
     pub allow_power: bool,
     /// Allow killing processes.
     pub allow_kill: bool,
+    /// Allow Home Assistant to show desktop notifications.
+    pub allow_notify: bool,
     /// Named shell commands Home Assistant may trigger. Only commands listed here can be run.
     pub commands: BTreeMap<String, String>,
 }
@@ -52,6 +54,7 @@ impl Default for Config {
             mdns: true,
             allow_power: true,
             allow_kill: true,
+            allow_notify: true,
             commands: BTreeMap::new(),
         }
     }

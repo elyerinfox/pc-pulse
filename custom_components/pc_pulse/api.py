@@ -112,6 +112,13 @@ class AgentClient:
         """Run a command defined in the agent's config."""
         return await self._request("POST", f"/commands/{name}")
 
+    async def notify(self, message: str, title: str | None = None) -> dict[str, Any]:
+        """Show a desktop notification."""
+        body: dict[str, Any] = {"message": message}
+        if title:
+            body["title"] = title
+        return await self._request("POST", "/notify", json=body)
+
 
 def _format_host(host: str) -> str:
     return f"[{host}]" if ":" in host and not host.startswith("[") else host

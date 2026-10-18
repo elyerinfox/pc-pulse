@@ -52,6 +52,8 @@ async def test_live_setup(hass: HomeAssistant, live_agent: dict[str, Any]) -> No
     # Power is disabled in the test agent, so no power buttons or switch.
     assert hass.states.get("button.live_agent_shut_down") is None
     assert hass.states.get("switch.live_agent_power") is None
+    # Notifications are disabled in the test agent.
+    assert hass.states.get("notify.live_agent_desktop_notification").state == "unavailable"
 
 
 async def test_live_services(hass: HomeAssistant, live_agent: dict[str, Any]) -> None:

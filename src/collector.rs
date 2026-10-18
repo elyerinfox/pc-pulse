@@ -135,6 +135,7 @@ pub struct Snapshot {
 pub struct Capabilities {
     pub power: Vec<&'static str>,
     pub kill: bool,
+    pub notify: bool,
     pub commands: Vec<String>,
 }
 
@@ -397,6 +398,7 @@ pub fn capabilities(cfg: &Config) -> Capabilities {
             Vec::new()
         },
         kill: cfg.allow_kill,
+        notify: cfg.allow_notify,
         commands: cfg.commands.keys().cloned().collect(),
     }
 }

@@ -3,6 +3,7 @@ mod autostart;
 mod collector;
 mod config;
 mod discovery;
+mod notify;
 mod platform;
 
 use std::net::SocketAddr;

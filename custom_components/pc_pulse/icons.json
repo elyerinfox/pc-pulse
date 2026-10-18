@@ -14,6 +14,9 @@
       "wake": { "default": "mdi:lan-connect" },
       "command": { "default": "mdi:console" }
     },
+    "notify": {
+      "desktop": { "default": "mdi:message-badge" }
+    },
     "sensor": {
       "cpu_usage": { "default": "mdi:cpu-64-bit" },
       "cpu_frequency": { "default": "mdi:speedometer" },

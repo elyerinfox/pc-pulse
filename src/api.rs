@@ -13,6 +13,7 @@ use sysinfo::{Pid, ProcessesToUpdate};
 
 use crate::collector::{Collector, Shared};
 use crate::config::Config;
+use crate::notify;
 use crate::platform::{self, PowerAction};
 
 #[derive(Clone)]
@@ -43,6 +44,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/v1/processes/kill", post(kill))
         .route("/api/v1/power/{action}", post(power))
         .route("/api/v1/commands/{name}", post(run_command))
+        .route("/api/v1/notify", post(notify))
         .route_layer(middleware::from_fn_with_state(state.clone(), auth));
 
     Router::new()
@@ -246,4 +248,29 @@ async fn run_command(
     platform::spawn_shell(command)
         .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, format!("{e:#}")))?;
     Ok(Json(json!({ "command": name, "started": true })).into_response())
+}
+
+#[derive(Deserialize)]
+struct NotifyRequest {
+    message: String,
+    #[serde(default)]
+    title: Option<String>,
+}
+
+async fn notify(
+    State(state): State<AppState>,
+    Json(req): Json<NotifyRequest>,
+) -> ApiResult<Response> {
+    if !state.cfg.allow_notify {
+        return Err(err(StatusCode::FORBIDDEN, "notifications are disabled"));
+    }
+    if req.message.trim().is_empty() {
+        return Err(err(StatusCode::BAD_REQUEST, "message is required"));
+    }
+    let title = req.title.filter(|t| !t.trim().is_empty());
+    tokio::task::spawn_blocking(move || notify::show(title.as_deref(), &req.message))
+        .await
+        .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, format!("{e:#}")))?;
+    Ok(Json(json!({ "shown": true })).into_response())
 }

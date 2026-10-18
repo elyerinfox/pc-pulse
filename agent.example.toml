@@ -24,6 +24,8 @@ mdns = true
 allow_power = true
 # Allow killing processes.
 allow_kill = true
+# Allow Home Assistant to show desktop notifications.
+allow_notify = true
 
 # Commands Home Assistant may run. Each becomes a button. Only these can be run.
 [commands]

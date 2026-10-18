@@ -115,6 +115,7 @@ def make_status(**overrides: Any) -> dict[str, Any]:
             "power": ["shutdown", "restart", "sleep", "hibernate", "lock", "logoff",
                       "monitor_off", "monitor_on"],
             "kill": True,
+            "notify": True,
             "commands": ["open_steam"],
         },
     }
@@ -172,6 +173,7 @@ def live_agent() -> Generator[dict[str, Any]]:
                 # Never let tests shut the machine down.
                 "allow_power = false",
                 "allow_kill = true",
+                "allow_notify = false",
                 "[commands]",
                 'noop = "echo hi"',
             ]

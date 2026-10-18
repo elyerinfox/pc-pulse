@@ -102,6 +102,17 @@ async def test_power_buttons_and_switch(hass: HomeAssistant, mock_client: AsyncM
     mock_client.run_command.assert_awaited_with("open_steam")
 
 
+async def test_notify(hass: HomeAssistant, mock_client: AsyncMock) -> None:
+    await _setup(hass)
+    await hass.services.async_call(
+        "notify",
+        "send_message",
+        {"entity_id": "notify.test_pc_desktop_notification", "title": "Hi", "message": "Laundry done"},
+        blocking=True,
+    )
+    mock_client.notify.assert_awaited_with("Laundry done", "Hi")
+
+
 async def test_services(hass: HomeAssistant, mock_client: AsyncMock) -> None:
     entry = await _setup(hass)
     device = _device(hass, entry)

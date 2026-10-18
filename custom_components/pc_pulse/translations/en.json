@@ -88,6 +88,9 @@
       "wake": { "name": "Wake-on-LAN" },
       "command": { "name": "Run {name}" }
     },
+    "notify": {
+      "desktop": { "name": "Desktop notification" }
+    },
     "sensor": {
       "cpu_usage": { "name": "CPU usage" },
       "cpu_frequency": { "name": "CPU frequency" },

@@ -13,6 +13,7 @@ Monitor and control your PCs from Home Assistant. This repository has two parts:
 | Binary sensors | Online, user active (keyboard/mouse within the threshold), screen lock |
 | Buttons | Shut down, restart, sleep, hibernate, lock, log off, turn displays off/on, Wake-on-LAN, one button per custom command |
 | Switch | Power: on sends Wake-on-LAN, off shuts down |
+| Notify | Desktop notification: shows a native notification on the computer (Windows toast, Linux notification daemon, macOS Notification Center) |
 | Services | `pc_pulse.power`, `.wake`, `.kill_process`, `.run_command`, `.get_processes` (returns data) |
 
 \* Temperatures depend on the platform. On Windows they usually need the agent to run elevated.
@@ -65,6 +66,14 @@ automation:
         target:
           entity_id: button.gaming_pc_sleep
 
+# Pop up a notification on the PC
+      - action: notify.send_message
+        target:
+          entity_id: notify.gaming_pc_desktop_notification
+        data:
+          title: Laundry
+          message: The washer is done.
+
 # Kill a game remotely
 script:
   stop_game:
@@ -95,10 +104,11 @@ All endpoints except `/api/v1/health` need `Authorization: Bearer <token>`.
 | POST | `/api/v1/processes/kill` | `{"pid": 123}` or `{"name": "notepad.exe"}` |
 | POST | `/api/v1/power/{action}` | `shutdown`, `restart`, `sleep`, `hibernate`, `lock`, `logoff`, `monitor_off`, `monitor_on`; optional `{"delay_secs": N}` |
 | POST | `/api/v1/commands/{name}` | Run a command from the `[commands]` table |
+| POST | `/api/v1/notify` | `{"message": "...", "title": "..."}` shows a desktop notification |
 
 ## Security
 
-The API is plain HTTP on your LAN, protected by a random 48-character token. Anyone with the token can shut the computer down or kill processes. Keep the agent off untrusted networks, or turn off `allow_power` and `allow_kill` in the config. Arbitrary commands can't be run, only the ones you list in `[commands]`.
+The API is plain HTTP on your LAN, protected by a random 48-character token. Anyone with the token can shut the computer down or kill processes. Keep the agent off untrusted networks, or turn off `allow_power`, `allow_kill` and `allow_notify` in the config. Arbitrary commands can't be run, only the ones you list in `[commands]`.
 
 ## Development
 
