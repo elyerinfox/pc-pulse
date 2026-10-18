@@ -99,17 +99,15 @@ fn check() -> Option<OsUpdates> {
             .filter_map(|l| l.split_whitespace().next().map(str::to_owned))
             .collect();
         ("dnf", titles)
-    } else if let Some(o) = run("checkupdates", &[])
-        // Exit code 2 means no updates.
-        .filter(|o| matches!(o.status.code(), Some(0) | Some(2)))
-    {
+    } else {
+        let o = run("checkupdates", &[])
+            // Exit code 2 means no updates.
+            .filter(|o| matches!(o.status.code(), Some(0) | Some(2)))?;
         let titles = stdout(&o)
             .lines()
             .filter_map(|l| l.split_whitespace().next().map(str::to_owned))
             .collect();
         ("pacman", titles)
-    } else {
-        return None;
     };
     Some(OsUpdates {
         count: titles.len(),
