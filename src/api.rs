@@ -7,15 +7,15 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sysinfo::{Pid, ProcessesToUpdate};
 
-use crate::collector::{Collector, Shared};
+use crate::collector::{Collector, Shared, Snapshot};
 use crate::config::Config;
 use crate::notify;
-use crate::osupdates::SharedOsUpdates;
-use crate::update::{self, SharedUpdate};
+use crate::osupdates::{OsUpdates, SharedOsUpdates};
+use crate::update::{self, SharedUpdate, UpdateStatus};
 use crate::platform::{self, PowerAction};
 
 #[derive(Clone)]
@@ -91,15 +91,27 @@ async fn health(State(state): State<AppState>) -> impl IntoResponse {
     }))
 }
 
+/// The snapshot plus state kept outside the collector. Serialized directly (not via
+/// `serde_json::Value`) so f32 values keep their short form.
+#[derive(Serialize)]
+struct StatusResponse<'a> {
+    #[serde(flatten)]
+    snapshot: &'a Snapshot,
+    update: UpdateStatus,
+    os_updates: Option<OsUpdates>,
+}
+
 async fn status(State(state): State<AppState>) -> ApiResult<Response> {
-    let mut snapshot = match state.shared.read().await.as_ref() {
-        Some(s) => serde_json::to_value(s)
-            .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?,
-        None => return Err(err(StatusCode::SERVICE_UNAVAILABLE, "still collecting initial sample")),
+    let guard = state.shared.read().await;
+    let Some(snapshot) = guard.as_ref() else {
+        return Err(err(StatusCode::SERVICE_UNAVAILABLE, "still collecting initial sample"));
     };
-    snapshot["update"] = json!(*state.update.lock().unwrap());
-    snapshot["os_updates"] = json!(*state.os_updates.lock().unwrap());
-    Ok(Json(snapshot).into_response())
+    let body = StatusResponse {
+        snapshot,
+        update: state.update.lock().unwrap().clone(),
+        os_updates: state.os_updates.lock().unwrap().clone(),
+    };
+    Ok(Json(body).into_response())
 }
 
 #[derive(Deserialize)]
