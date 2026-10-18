@@ -129,3 +129,13 @@ cargo clippy && cargo build
 pip install -r requirements_test.txt
 pytest   # unit tests plus end-to-end tests against the real agent (power actions disabled)
 ```
+
+### Releasing
+
+Changes are recorded in [`CHANGELOG.md`](CHANGELOG.md) following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/): add entries under *Unreleased* as you go. To release, move them to a new version section, bump the version in `Cargo.toml` and `custom_components/pc_pulse/manifest.json` (CI checks both match and have a changelog section), then publish the release with its notes:
+
+```sh
+gh release create v1.2.3 --title v1.2.3 --notes "$(scripts/release-notes.sh 1.2.3)"
+```
+
+The release workflow builds the agent for every platform and attaches the archives, the raw binaries and checksums the self-updater uses, and `pc_pulse.zip`.
