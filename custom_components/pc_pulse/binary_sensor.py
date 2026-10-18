@@ -20,13 +20,14 @@ async def async_setup_entry(
 ) -> None:
     """Set up binary sensors."""
     coordinator = entry.runtime_data
-    async_add_entities(
-        [
-            OnlineSensor(coordinator, "online"),
-            UserActiveSensor(coordinator, "user_active"),
-            LockSensor(coordinator, "screen_lock"),
-        ]
-    )
+    entities: list[BinarySensorEntity] = [
+        OnlineSensor(coordinator, "online"),
+        UserActiveSensor(coordinator, "user_active"),
+        LockSensor(coordinator, "screen_lock"),
+    ]
+    if coordinator.layout.get("has_battery"):
+        entities.append(ChargingSensor(coordinator, "battery_charging"))
+    async_add_entities(entities)
 
 
 class OnlineSensor(ComputerEntity, BinarySensorEntity):
@@ -73,3 +74,18 @@ class LockSensor(ComputerEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         locked = self.coordinator.data["activity"].get("locked")
         return None if locked is None else not locked
+
+
+class ChargingSensor(ComputerEntity, BinarySensorEntity):
+    """Whether the battery is charging."""
+
+    _attr_translation_key = "battery_charging"
+    _attr_device_class = BinarySensorDeviceClass.BATTERY_CHARGING
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.data.get("battery") is not None
+
+    @property
+    def is_on(self) -> bool | None:
+        return self.coordinator.data["battery"]["charging"]

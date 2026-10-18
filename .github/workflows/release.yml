@@ -42,12 +42,18 @@ jobs:
           cp "target/${{ matrix.target }}/release/${{ matrix.exe }}" README.md agent.example.toml "$name/"
           if [[ "${{ matrix.os }}" == windows* ]]; then
             7z a "$name.zip" "$name"
-            echo "ASSET=$name.zip" >> "$GITHUB_ENV"
+            archive="$name.zip"
+            raw="pc-pulse-${{ matrix.target }}.exe"
           else
             tar czf "$name.tar.gz" "$name"
-            echo "ASSET=$name.tar.gz" >> "$GITHUB_ENV"
+            archive="$name.tar.gz"
+            raw="pc-pulse-${{ matrix.target }}"
           fi
-      - run: gh release upload "${{ github.event.release.tag_name }}" "${{ env.ASSET }}"
+          # Raw binary and checksum for the agent's self-updater.
+          cp "target/${{ matrix.target }}/release/${{ matrix.exe }}" "$raw"
+          if command -v sha256sum > /dev/null; then sha256sum "$raw" > "$raw.sha256"; else shasum -a 256 "$raw" > "$raw.sha256"; fi
+          echo "ASSETS=$archive $raw $raw.sha256" >> "$GITHUB_ENV"
+      - run: gh release upload "${{ github.event.release.tag_name }}" ${{ env.ASSETS }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

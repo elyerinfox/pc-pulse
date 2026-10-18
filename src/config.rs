@@ -33,6 +33,11 @@ pub struct Config {
     pub allow_kill: bool,
     /// Allow Home Assistant to show desktop notifications.
     pub allow_notify: bool,
+    /// Install new releases automatically (checked every `update_check_hours`).
+    pub auto_update: bool,
+    /// GitHub repository releases are fetched from. Empty disables update checks.
+    pub update_repo: String,
+    pub update_check_hours: u64,
     /// Named shell commands Home Assistant may trigger. Only commands listed here can be run.
     pub commands: BTreeMap<String, String>,
 }
@@ -55,6 +60,9 @@ impl Default for Config {
             allow_power: true,
             allow_kill: true,
             allow_notify: true,
+            auto_update: true,
+            update_repo: "elyerinfox/pc-pulse".into(),
+            update_check_hours: 24,
             commands: BTreeMap::new(),
         }
     }

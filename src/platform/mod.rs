@@ -84,6 +84,20 @@ pub fn supported_actions() -> Vec<PowerAction> {
     imp::supported_actions()
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct Battery {
+    pub percent: f32,
+    pub charging: bool,
+    pub plugged_in: Option<bool>,
+    /// Estimated seconds until empty while discharging.
+    pub time_remaining_secs: Option<u64>,
+}
+
+/// Battery state, or `None` on machines without one.
+pub fn battery() -> Option<Battery> {
+    imp::battery()
+}
+
 pub fn execute(action: PowerAction) -> anyhow::Result<()> {
     tracing::warn!("executing power action {}", action.as_str());
     imp::execute(action)
@@ -112,7 +126,7 @@ pub fn spawn_shell(command: &str) -> anyhow::Result<()> {
 
 /// Runs a program and returns stdout if it exited successfully.
 #[allow(dead_code)]
-fn output_of(program: &str, args: &[&str]) -> Option<String> {
+pub(crate) fn output_of(program: &str, args: &[&str]) -> Option<String> {
     let out = std::process::Command::new(program).args(args).output().ok()?;
     out.status
         .success()

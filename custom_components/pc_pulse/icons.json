@@ -39,7 +39,19 @@
       "os": { "default": "mdi:desktop-tower-monitor" },
       "ip_address": { "default": "mdi:ip-network" },
       "agent_version": { "default": "mdi:information-outline" },
-      "disk_usage": { "default": "mdi:harddisk" }
+      "disk_usage": { "default": "mdi:harddisk" },
+      "disk_read": { "default": "mdi:harddisk" },
+      "disk_write": { "default": "mdi:harddisk" },
+      "memory_speed": { "default": "mdi:memory" },
+      "motherboard": { "default": "mdi:developer-board" },
+      "gpu_usage": { "default": "mdi:expansion-card" },
+      "gpu_memory_usage": { "default": "mdi:expansion-card-variant" },
+      "gpu_memory_used": { "default": "mdi:expansion-card-variant" },
+      "gpu_core_clock": { "default": "mdi:speedometer" },
+      "gpu_memory_clock": { "default": "mdi:speedometer" },
+      "gpu_fan": { "default": "mdi:fan" },
+      "gpu_encoder": { "default": "mdi:video-box" },
+      "gpu_decoder": { "default": "mdi:video-box" }
     },
     "switch": {
       "power": { "default": "mdi:desktop-classic" }

@@ -3,8 +3,11 @@ mod autostart;
 mod collector;
 mod config;
 mod discovery;
+mod gpu;
+mod hardware;
 mod notify;
 mod platform;
+mod update;
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -45,6 +48,12 @@ enum Command {
     InstallAutostart,
     /// Remove the login autostart entry.
     UninstallAutostart,
+    /// Check GitHub for a newer release and install it.
+    Update {
+        /// Only report whether an update is available.
+        #[arg(long)]
+        check: bool,
+    },
 }
 
 fn print_info(cfg: &Config, path: &std::path::Path) {
@@ -124,12 +133,29 @@ async fn main() -> Result<()> {
             return autostart::install(&exe, &std::path::absolute(&path)?);
         }
         Command::UninstallAutostart => return autostart::uninstall(),
+        Command::Update { check } => {
+            let status = update::new_shared(&cfg);
+            let release = update::check(&cfg, &status)?;
+            let latest = status.lock().unwrap().latest.clone().unwrap_or_default();
+            match release {
+                None => println!("pc-pulse {} is up to date (latest: {latest})", update::VERSION),
+                Some(r) if check => println!("Update available: {} -> {}", update::VERSION, r.version),
+                Some(r) => {
+                    update::install(&r)?;
+                    println!("Installed {}. Restart the agent to use it.", r.version);
+                }
+            }
+            return Ok(());
+        }
     }
+    update::cleanup();
 
     let cfg = Arc::new(cfg);
     let shared = Arc::new(RwLock::new(None));
     let collector = Arc::new(Mutex::new(Collector::new()));
     collector::spawn(cfg.clone(), collector.clone(), shared.clone());
+    let update_status = update::new_shared(&cfg);
+    update::spawn_checker(cfg.clone(), update_status.clone());
 
     let _mdns = if cfg.mdns {
         match discovery::advertise(&cfg) {
@@ -150,10 +176,20 @@ async fn main() -> Result<()> {
         cfg: cfg.clone(),
         collector,
         shared,
+        update: update_status,
     });
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .with_context(|| format!("binding {addr}"))?;
+    // After a self-update the previous process may still hold the port for a moment.
+    let mut attempt = 0;
+    let listener = loop {
+        match tokio::net::TcpListener::bind(addr).await {
+            Ok(l) => break l,
+            Err(e) if attempt < 30 && e.kind() == std::io::ErrorKind::AddrInUse => {
+                attempt += 1;
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            }
+            Err(e) => return Err(e).with_context(|| format!("binding {addr}")),
+        }
+    };
     print_info(&cfg, &path);
     tracing::info!("listening on http://{addr}");
     axum::serve(listener, app)

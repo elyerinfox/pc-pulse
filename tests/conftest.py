@@ -111,11 +111,40 @@ def make_status(**overrides: Any) -> dict[str, Any]:
             {"pid": 2, "name": "browser.exe", "exe": None, "cpu_percent": 1.0,
              "memory_bytes": 2097152, "status": "Run", "run_time_secs": 5}
         ],
+        "disk_io": {"read_bytes_per_sec": 1048576.0, "write_bytes_per_sec": 0.0},
+        "gpus": [
+            {
+                "index": 0, "name": "Test GPU", "vendor": "nvidia", "usage_percent": 40.0,
+                "memory_used_bytes": 2147483648, "memory_total_bytes": 8589934592,
+                "memory_usage_percent": 25.0, "temperature_celsius": 60.0, "power_watts": 120.5,
+                "power_limit_watts": 250.0, "core_clock_mhz": 1800, "memory_clock_mhz": 7000,
+                "fan_percent": 35, "encoder_percent": None, "decoder_percent": None,
+            }
+        ],
+        "hardware": {
+            "memory_modules": [
+                {"locator": "DIMM 0", "size_bytes": 17179869184, "memory_type": "DDR5",
+                 "speed_mts": 4800, "configured_speed_mts": 6000, "manufacturer": "Acme",
+                 "part_number": "X1"},
+            ],
+            "memory_type": "DDR5", "memory_speed_mts": 6000,
+            "system_manufacturer": None, "system_product": None,
+            "board_manufacturer": "Acme", "board_product": "B650",
+            "bios_vendor": "AMI", "bios_version": "1.0", "bios_date": "01/01/2026",
+        },
+        "battery": {"percent": 80.0, "charging": True, "plugged_in": True,
+                    "time_remaining_secs": None},
+        "update": {
+            "current": "0.1.0", "latest": "0.2.0", "release_url": "https://example.com/r",
+            "release_notes": "Notes", "available": True, "auto": False, "installing": False,
+            "checked_at": "2026-10-17T12:00:00Z", "error": None,
+        },
         "capabilities": {
             "power": ["shutdown", "restart", "sleep", "hibernate", "lock", "logoff",
                       "monitor_off", "monitor_on"],
             "kill": True,
             "notify": True,
+            "update": True,
             "commands": ["open_steam"],
         },
     }
@@ -174,6 +203,7 @@ def live_agent() -> Generator[dict[str, Any]]:
                 "allow_power = false",
                 "allow_kill = true",
                 "allow_notify = false",
+                'update_repo = ""',
                 "[commands]",
                 'noop = "echo hi"',
             ]

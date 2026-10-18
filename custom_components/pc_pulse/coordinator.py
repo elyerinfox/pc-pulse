@@ -39,6 +39,7 @@ STORAGE_VERSION = 1
 
 def layout_from_status(data: dict[str, Any]) -> dict[str, Any]:
     """Extract the parts of a status that decide which entities exist."""
+    hardware = data.get("hardware") or {}
     return {
         "id": data.get("id"),
         "name": data.get("name"),
@@ -49,6 +50,18 @@ def layout_from_status(data: dict[str, Any]) -> dict[str, Any]:
         "capabilities": data.get("capabilities") or {},
         "disks": sorted(d["mount_point"] for d in data.get("disks") or []),
         "has_temperature": bool(data.get("temperatures")),
+        "gpus": [
+            {
+                "index": g["index"],
+                "name": g["name"],
+                "fields": sorted(k for k, v in g.items() if v is not None),
+            }
+            for g in data.get("gpus") or []
+        ],
+        "has_battery": data.get("battery") is not None,
+        "has_disk_io": "disk_io" in data,
+        "has_memory_speed": bool(hardware.get("memory_speed_mts")),
+        "has_board": bool(hardware.get("board_product") or hardware.get("system_product")),
         "primary_mac": data.get("primary_mac"),
         "primary_ip": data.get("primary_ip"),
     }

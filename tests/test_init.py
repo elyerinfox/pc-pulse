@@ -54,6 +54,19 @@ async def test_entities(hass: HomeAssistant, mock_client: AsyncMock) -> None:
     assert hass.states.get("sensor.test_pc_top_process_cpu").state == "game.exe"
     assert hass.states.get("sensor.test_pc_logged_in_users").state == "1"
     assert hass.states.get("sensor.test_pc_last_active").state == "2026-10-17T11:59:30+00:00"
+    assert hass.states.get("sensor.test_pc_gpu_usage").state == "40.0"
+    assert hass.states.get("sensor.test_pc_gpu_memory_usage").state == "25.0"
+    assert hass.states.get("sensor.test_pc_gpu_temperature").state == "60.0"
+    assert hass.states.get("sensor.test_pc_gpu_power").attributes["power_limit_w"] == 250.0
+    # Fields the GPU doesn't report get no entity.
+    assert hass.states.get("sensor.test_pc_gpu_encoder_usage") is None
+    memory = hass.states.get("sensor.test_pc_memory_speed")
+    assert memory.state == "6000"
+    assert memory.attributes["type"] == "DDR5"
+    assert hass.states.get("sensor.test_pc_motherboard").state == "Acme B650"
+    assert hass.states.get("sensor.test_pc_disk_read_speed").state == "1.048576"
+    assert hass.states.get("sensor.test_pc_battery").state == "80.0"
+    assert hass.states.get("binary_sensor.test_pc_battery_charging").state == STATE_ON
     # Load average is not meaningful on Windows.
     assert hass.states.get("sensor.test_pc_load_1m") is None
 
@@ -100,6 +113,18 @@ async def test_power_buttons_and_switch(hass: HomeAssistant, mock_client: AsyncM
         "button", "press", {"entity_id": "button.test_pc_run_open_steam"}, blocking=True
     )
     mock_client.run_command.assert_awaited_with("open_steam")
+
+
+async def test_update(hass: HomeAssistant, mock_client: AsyncMock) -> None:
+    await _setup(hass)
+    state = hass.states.get("update.test_pc_agent")
+    assert state.state == STATE_ON
+    assert state.attributes["installed_version"] == "0.1.0"
+    assert state.attributes["latest_version"] == "0.2.0"
+    await hass.services.async_call(
+        "update", "install", {"entity_id": "update.test_pc_agent"}, blocking=True
+    )
+    mock_client.install_update.assert_awaited_once()
 
 
 async def test_notify(hass: HomeAssistant, mock_client: AsyncMock) -> None:

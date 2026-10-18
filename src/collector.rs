@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -10,7 +11,9 @@ use sysinfo::{
 use tokio::sync::RwLock;
 
 use crate::config::Config;
-use crate::platform;
+use crate::gpu::{GpuInfo, Gpus};
+use crate::hardware::{self, HardwareInfo};
+use crate::platform::{self, Battery};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct OsInfo {
@@ -56,6 +59,14 @@ pub struct DiskInfo {
     pub available_bytes: u64,
     pub used_bytes: u64,
     pub usage_percent: f32,
+    pub read_bytes_per_sec: f64,
+    pub write_bytes_per_sec: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DiskIo {
+    pub read_bytes_per_sec: f64,
+    pub write_bytes_per_sec: f64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -118,12 +129,16 @@ pub struct Snapshot {
     pub cpu: CpuInfo,
     pub memory: MemoryInfo,
     pub disks: Vec<DiskInfo>,
+    pub disk_io: DiskIo,
     pub network: NetworkTotals,
     pub interfaces: Vec<NetworkInfo>,
     /// Address and MAC of the interface used for the default route (for Wake-on-LAN).
     pub primary_ip: Option<String>,
     pub primary_mac: Option<String>,
     pub temperatures: Vec<TemperatureInfo>,
+    pub gpus: Vec<GpuInfo>,
+    pub hardware: HardwareInfo,
+    pub battery: Option<Battery>,
     pub activity: ActivityInfo,
     pub process_count: usize,
     pub top_cpu: Vec<ProcessInfo>,
@@ -136,6 +151,7 @@ pub struct Capabilities {
     pub power: Vec<&'static str>,
     pub kill: bool,
     pub notify: bool,
+    pub update: bool,
     pub commands: Vec<String>,
 }
 
@@ -144,7 +160,12 @@ pub struct Collector {
     disks: Disks,
     networks: Networks,
     components: Components,
-    last_network_refresh: Instant,
+    gpus: Gpus,
+    hardware: HardwareInfo,
+    battery: Option<Battery>,
+    /// Cumulative (read, written) bytes per mount point at the previous sample.
+    disk_totals: HashMap<String, (u64, u64)>,
+    last_refresh: Instant,
     /// Last time the user was seen active, kept when idle time can't be determined.
     last_active: Option<DateTime<Utc>>,
     tick: u64,
@@ -176,7 +197,11 @@ impl Collector {
             disks: Disks::new_with_refreshed_list(),
             networks: Networks::new_with_refreshed_list(),
             components: Components::new_with_refreshed_list(),
-            last_network_refresh: Instant::now(),
+            gpus: Gpus::new(),
+            hardware: hardware::collect(),
+            battery: platform::battery(),
+            disk_totals: HashMap::new(),
+            last_refresh: Instant::now(),
             last_active: None,
             tick: 0,
         }
@@ -215,9 +240,12 @@ impl Collector {
             self.components.refresh(false);
         }
 
-        let elapsed = self.last_network_refresh.elapsed().as_secs_f64().max(0.001);
+        let elapsed = self.last_refresh.elapsed().as_secs_f64().max(0.001);
         self.networks.refresh(true);
-        self.last_network_refresh = Instant::now();
+        self.last_refresh = Instant::now();
+        if self.tick.is_multiple_of(15) {
+            self.battery = platform::battery();
+        }
 
         let cpus = self.sys.cpus();
         let cpu = CpuInfo {
@@ -252,9 +280,21 @@ impl Collector {
             .filter(|d| d.total_space() > 0)
             .map(|d| {
                 let used = d.total_space().saturating_sub(d.available_space());
+                let mount = d.mount_point().to_string_lossy().into_owned();
+                let io = d.usage();
+                let (read_rate, write_rate) = match self
+                    .disk_totals
+                    .insert(mount.clone(), (io.total_read_bytes, io.total_written_bytes))
+                {
+                    Some((r, w)) => (
+                        (io.total_read_bytes.saturating_sub(r) as f64 / elapsed).round(),
+                        (io.total_written_bytes.saturating_sub(w) as f64 / elapsed).round(),
+                    ),
+                    None => (0.0, 0.0),
+                };
                 DiskInfo {
                     name: d.name().to_string_lossy().into_owned(),
-                    mount_point: d.mount_point().to_string_lossy().into_owned(),
+                    mount_point: mount,
                     file_system: d.file_system().to_string_lossy().into_owned(),
                     kind: format!("{:?}", d.kind()),
                     removable: d.is_removable(),
@@ -262,11 +302,17 @@ impl Collector {
                     available_bytes: d.available_space(),
                     used_bytes: used,
                     usage_percent: round1(percent(used, d.total_space())),
+                    read_bytes_per_sec: read_rate,
+                    write_bytes_per_sec: write_rate,
                 }
             })
             .collect();
         disks.sort_by(|a, b| a.mount_point.cmp(&b.mount_point));
         disks.dedup_by(|a, b| a.mount_point == b.mount_point);
+        let disk_io = DiskIo {
+            read_bytes_per_sec: disks.iter().map(|d| d.read_bytes_per_sec).sum(),
+            write_bytes_per_sec: disks.iter().map(|d| d.write_bytes_per_sec).sum(),
+        };
 
         let mut interfaces: Vec<NetworkInfo> = self
             .networks
@@ -355,11 +401,15 @@ impl Collector {
             cpu,
             memory,
             disks,
+            disk_io,
             network,
             interfaces,
             primary_ip,
             primary_mac,
             temperatures,
+            gpus: self.gpus.collect(),
+            hardware: self.hardware.clone(),
+            battery: self.battery.clone(),
             activity,
             process_count,
             top_cpu,
@@ -399,6 +449,7 @@ pub fn capabilities(cfg: &Config) -> Capabilities {
         },
         kill: cfg.allow_kill,
         notify: cfg.allow_notify,
+        update: !cfg.update_repo.is_empty(),
         commands: cfg.commands.keys().cloned().collect(),
     }
 }

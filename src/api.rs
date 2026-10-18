@@ -14,6 +14,7 @@ use sysinfo::{Pid, ProcessesToUpdate};
 use crate::collector::{Collector, Shared};
 use crate::config::Config;
 use crate::notify;
+use crate::update::{self, SharedUpdate};
 use crate::platform::{self, PowerAction};
 
 #[derive(Clone)]
@@ -21,6 +22,7 @@ pub struct AppState {
     pub cfg: Arc<Config>,
     pub collector: Arc<Mutex<Collector>>,
     pub shared: Shared,
+    pub update: SharedUpdate,
 }
 
 pub struct ApiError(StatusCode, String);
@@ -45,6 +47,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/v1/power/{action}", post(power))
         .route("/api/v1/commands/{name}", post(run_command))
         .route("/api/v1/notify", post(notify))
+        .route("/api/v1/update", get(update_status).post(update_install))
         .route_layer(middleware::from_fn_with_state(state.clone(), auth));
 
     Router::new()
@@ -87,10 +90,13 @@ async fn health(State(state): State<AppState>) -> impl IntoResponse {
 }
 
 async fn status(State(state): State<AppState>) -> ApiResult<Response> {
-    match state.shared.read().await.as_ref() {
-        Some(s) => Ok(Json(s).into_response()),
-        None => Err(err(StatusCode::SERVICE_UNAVAILABLE, "still collecting initial sample")),
-    }
+    let mut snapshot = match state.shared.read().await.as_ref() {
+        Some(s) => serde_json::to_value(s)
+            .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?,
+        None => return Err(err(StatusCode::SERVICE_UNAVAILABLE, "still collecting initial sample")),
+    };
+    snapshot["update"] = json!(*state.update.lock().unwrap());
+    Ok(Json(snapshot).into_response())
 }
 
 #[derive(Deserialize)]
@@ -273,4 +279,58 @@ async fn notify(
         .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, format!("{e:#}")))?;
     Ok(Json(json!({ "shown": true })).into_response())
+}
+
+async fn update_status(State(state): State<AppState>) -> ApiResult<Response> {
+    if state.cfg.update_repo.is_empty() {
+        return Err(err(StatusCode::FORBIDDEN, "updates are disabled"));
+    }
+    let (cfg, status) = (state.cfg.clone(), state.update.clone());
+    // A failed check is recorded in the status, which is returned either way.
+    let _ = tokio::task::spawn_blocking(move || update::check(&cfg, &status)).await;
+    Ok(Json(json!(*state.update.lock().unwrap())).into_response())
+}
+
+async fn update_install(State(state): State<AppState>) -> ApiResult<Response> {
+    if state.cfg.update_repo.is_empty() {
+        return Err(err(StatusCode::FORBIDDEN, "updates are disabled"));
+    }
+    if state.update.lock().unwrap().installing {
+        return Err(err(StatusCode::CONFLICT, "an update is already being installed"));
+    }
+    let (cfg, status) = (state.cfg.clone(), state.update.clone());
+    let release = tokio::task::spawn_blocking(move || update::check(&cfg, &status))
+        .await
+        .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .map_err(|e| err(StatusCode::BAD_GATEWAY, format!("{e:#}")))?;
+    let Some(release) = release else {
+        return Err(err(StatusCode::CONFLICT, "already up to date"));
+    };
+    let version = release.version.clone();
+    let status = state.update.clone();
+    status.lock().unwrap().installing = true;
+    // Install after responding, then restart into the new version.
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        let st = status.clone();
+        let result = tokio::task::spawn_blocking(move || update::install(&release)).await;
+        let mut s = st.lock().unwrap();
+        s.installing = false;
+        match result {
+            Ok(Ok(())) => {
+                drop(s);
+                update::restart();
+            }
+            Ok(Err(e)) => {
+                tracing::error!("update failed: {e:#}");
+                s.error = Some(format!("{e:#}"));
+            }
+            Err(e) => s.error = Some(e.to_string()),
+        }
+    });
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(json!({ "installing": true, "version": version })),
+    )
+        .into_response())
 }

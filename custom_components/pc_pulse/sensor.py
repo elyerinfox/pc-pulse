@@ -19,6 +19,7 @@ from homeassistant.const import (
     UnitOfDataRate,
     UnitOfFrequency,
     UnitOfInformation,
+    UnitOfPower,
     UnitOfTemperature,
     UnitOfTime,
 )
@@ -43,6 +44,60 @@ def _cpu_temperature(data: Data) -> float | None:
     cpu = [t["celsius"] for t in temps if any(h in t["label"].lower() for h in CPU_TEMP_HINTS)]
     values = cpu or [t["celsius"] for t in temps]
     return max(values) if values else None
+
+
+def _hardware(data: Data) -> Data:
+    return data.get("hardware") or {}
+
+
+def _board(data: Data) -> str | None:
+    hw = _hardware(data)
+    parts = [hw.get("board_manufacturer"), hw.get("board_product")]
+    if not parts[1]:
+        parts = [hw.get("system_manufacturer"), hw.get("system_product")]
+    return " ".join(p for p in parts if p) or None
+
+
+def _board_attrs(data: Data) -> dict[str, Any]:
+    hw = _hardware(data)
+    system = [hw.get("system_manufacturer"), hw.get("system_product")]
+    return {
+        "system": " ".join(p for p in system if p) or None,
+        "bios_vendor": hw.get("bios_vendor"),
+        "bios_version": hw.get("bios_version"),
+        "bios_date": hw.get("bios_date"),
+    }
+
+
+def _memory_attrs(data: Data) -> dict[str, Any]:
+    hw = _hardware(data)
+    modules = hw.get("memory_modules") or []
+    gib = 1073741824
+    return {
+        "type": hw.get("memory_type"),
+        "module_count": len(modules),
+        "installed_gib": round(sum(m["size_bytes"] for m in modules) / gib, 1),
+        "modules": [
+            {
+                "slot": m.get("locator"),
+                "size_gib": round(m["size_bytes"] / gib, 1),
+                "rated_speed_mts": m.get("speed_mts"),
+                "configured_speed_mts": m.get("configured_speed_mts"),
+                "manufacturer": m.get("manufacturer"),
+                "part_number": m.get("part_number"),
+            }
+            for m in modules
+        ],
+    }
+
+
+def _battery_attrs(data: Data) -> dict[str, Any]:
+    battery = data["battery"]
+    remaining = battery.get("time_remaining_secs")
+    return {
+        "plugged_in": battery.get("plugged_in"),
+        "time_remaining_min": round(remaining / 60) if remaining is not None else None,
+    }
 
 
 def _process_attrs(procs: list[dict[str, Any]]) -> dict[str, Any]:
@@ -198,6 +253,47 @@ SENSORS: tuple[ComputerSensorDescription, ...] = (
         value_fn=lambda d: d["network"]["tx_bytes_total"],
     ),
     ComputerSensorDescription(
+        key="memory_speed",
+        translation_key="memory_speed",
+        native_unit_of_measurement="MT/s",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: _hardware(d).get("memory_speed_mts"),
+        attrs_fn=_memory_attrs,
+        exists_fn=lambda layout: layout.get("has_memory_speed", False),
+    ),
+    ComputerSensorDescription(
+        key="disk_read",
+        translation_key="disk_read",
+        device_class=SensorDeviceClass.DATA_RATE,
+        native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
+        suggested_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
+        suggested_display_precision=2,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda d: d["disk_io"]["read_bytes_per_sec"],
+        exists_fn=lambda layout: layout.get("has_disk_io", False),
+    ),
+    ComputerSensorDescription(
+        key="disk_write",
+        translation_key="disk_write",
+        device_class=SensorDeviceClass.DATA_RATE,
+        native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
+        suggested_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
+        suggested_display_precision=2,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda d: d["disk_io"]["write_bytes_per_sec"],
+        exists_fn=lambda layout: layout.get("has_disk_io", False),
+    ),
+    ComputerSensorDescription(
+        key="battery",
+        translation_key="battery",
+        device_class=SensorDeviceClass.BATTERY,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda d: d["battery"]["percent"],
+        attrs_fn=_battery_attrs,
+        exists_fn=lambda layout: layout.get("has_battery", False),
+    ),
+    ComputerSensorDescription(
         key="process_count",
         translation_key="process_count",
         state_class=SensorStateClass.MEASUREMENT,
@@ -256,6 +352,14 @@ SENSORS: tuple[ComputerSensorDescription, ...] = (
         },
     ),
     ComputerSensorDescription(
+        key="motherboard",
+        translation_key="motherboard",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_board,
+        attrs_fn=_board_attrs,
+        exists_fn=lambda layout: layout.get("has_board", False),
+    ),
+    ComputerSensorDescription(
         key="ip_address",
         translation_key="ip_address",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -277,6 +381,97 @@ SENSORS: tuple[ComputerSensorDescription, ...] = (
 )
 
 
+@dataclass(frozen=True, kw_only=True)
+class GpuSensorDescription(SensorEntityDescription):
+    """Describes a per-GPU sensor; `field` is the key in the agent's GPU data."""
+
+    field: str
+    attrs_fn: Callable[[Data], dict[str, Any]] | None = None
+
+
+def _pct(key: str, field: str, enabled: bool = True, **kw: Any) -> GpuSensorDescription:
+    return GpuSensorDescription(
+        key=key,
+        field=field,
+        translation_key=f"gpu_{key}",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=enabled,
+        **kw,
+    )
+
+
+def _clock(key: str, field: str) -> GpuSensorDescription:
+    return GpuSensorDescription(
+        key=key,
+        field=field,
+        translation_key=f"gpu_{key}",
+        device_class=SensorDeviceClass.FREQUENCY,
+        native_unit_of_measurement=UnitOfFrequency.MEGAHERTZ,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+
+
+GPU_SENSORS: tuple[GpuSensorDescription, ...] = (
+    _pct("usage", "usage_percent", attrs_fn=lambda g: {"name": g["name"], "vendor": g["vendor"]}),
+    _pct(
+        "memory_usage",
+        "memory_usage_percent",
+        suggested_display_precision=1,
+        attrs_fn=lambda g: {
+            "used_gib": round((g["memory_used_bytes"] or 0) / 1073741824, 2),
+            "total_gib": round((g["memory_total_bytes"] or 0) / 1073741824, 2),
+        },
+    ),
+    GpuSensorDescription(
+        key="memory_used",
+        field="memory_used_bytes",
+        translation_key="gpu_memory_used",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.GIBIBYTES,
+        suggested_display_precision=2,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    ),
+    GpuSensorDescription(
+        key="temperature",
+        field="temperature_celsius",
+        translation_key="gpu_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    GpuSensorDescription(
+        key="power",
+        field="power_watts",
+        translation_key="gpu_power",
+        device_class=SensorDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        attrs_fn=lambda g: {"power_limit_w": g["power_limit_watts"]},
+    ),
+    _clock("core_clock", "core_clock_mhz"),
+    _clock("memory_clock", "memory_clock_mhz"),
+    _pct("fan", "fan_percent", enabled=False),
+    _pct("encoder", "encoder_percent", enabled=False),
+    _pct("decoder", "decoder_percent", enabled=False),
+)
+
+
+def _gpu_entities(
+    coordinator: ComputersCoordinator, gpus: list[dict[str, Any]], total: int
+) -> list[SensorEntity]:
+    return [
+        GpuSensor(coordinator, gpu["index"], total, desc)
+        for gpu in gpus
+        for desc in GPU_SENSORS
+        if desc.field in gpu["fields"]
+    ]
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ComputersConfigEntry,
@@ -290,16 +485,24 @@ async def async_setup_entry(
     ]
     known_disks: set[str] = set(layout.get("disks", []))
     entities.extend(DiskSensor(coordinator, mount) for mount in known_disks)
+    gpus = layout.get("gpus", [])
+    known_gpus: set[int] = {g["index"] for g in gpus}
+    entities.extend(_gpu_entities(coordinator, gpus, len(gpus)))
     async_add_entities(entities)
 
     @callback
-    def _add_new_disks() -> None:
+    def _add_new_hardware() -> None:
         new = set(coordinator.layout.get("disks", [])) - known_disks
         if new:
             known_disks.update(new)
             async_add_entities(DiskSensor(coordinator, mount) for mount in new)
+        current = coordinator.layout.get("gpus", [])
+        new_gpus = [g for g in current if g["index"] not in known_gpus]
+        if new_gpus:
+            known_gpus.update(g["index"] for g in new_gpus)
+            async_add_entities(_gpu_entities(coordinator, new_gpus, len(current)))
 
-    entry.async_on_unload(coordinator.async_add_listener(_add_new_disks))
+    entry.async_on_unload(coordinator.async_add_listener(_add_new_hardware))
 
 
 class ComputerSensor(ComputerEntity, SensorEntity):
@@ -379,3 +582,45 @@ class DiskSensor(ComputerEntity, SensorEntity):
             "used_gib": round(disk["used_bytes"] / gib, 2),
             "free_gib": round(disk["available_bytes"] / gib, 2),
         }
+
+
+class GpuSensor(ComputerEntity, SensorEntity):
+    """One statistic of one GPU."""
+
+    entity_description: GpuSensorDescription
+
+    def __init__(
+        self,
+        coordinator: ComputersCoordinator,
+        index: int,
+        total: int,
+        description: GpuSensorDescription,
+    ) -> None:
+        super().__init__(coordinator, f"gpu{index}_{description.key}")
+        self.entity_description = description
+        self._index = index
+        self._attr_translation_placeholders = {
+            "gpu": "GPU" if total <= 1 else f"GPU {index + 1}"
+        }
+
+    def _gpu(self) -> dict[str, Any] | None:
+        for gpu in (self.coordinator.data or {}).get("gpus") or []:
+            if gpu["index"] == self._index:
+                return gpu
+        return None
+
+    @property
+    def available(self) -> bool:
+        return super().available and self._gpu() is not None
+
+    @property
+    def native_value(self) -> Any:
+        gpu = self._gpu()
+        return gpu.get(self.entity_description.field) if gpu else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        gpu = self._gpu()
+        if gpu is None or self.entity_description.attrs_fn is None:
+            return None
+        return self.entity_description.attrs_fn(gpu)

@@ -119,6 +119,10 @@ class AgentClient:
             body["title"] = title
         return await self._request("POST", "/notify", json=body)
 
+    async def install_update(self) -> dict[str, Any]:
+        """Ask the agent to install the latest release and restart."""
+        return await self._request("POST", "/update")
+
 
 def _format_host(host: str) -> str:
     return f"[{host}]" if ":" in host and not host.startswith("[") else host

@@ -9,10 +9,12 @@ Monitor and control your PCs from Home Assistant. This repository has two parts:
 
 | Type | Entities |
 | --- | --- |
-| Sensors | CPU usage (per-core attributes), CPU frequency, CPU temperature\*, load average (Linux/macOS), memory usage/used/available, swap, disk usage per drive, download/upload speed, total traffic, process count, top process by CPU and by memory (top N list in attributes), idle time, last active, logged-in users, last boot, OS, IP address, agent version |
-| Binary sensors | Online, user active (keyboard/mouse within the threshold), screen lock |
+| Sensors | CPU usage (per-core attributes), CPU frequency, CPU temperature\*, load average (Linux/macOS), memory usage/used/available, memory speed and type (per-module details in attributes), swap, disk usage per drive, disk read/write speed, download/upload speed, total traffic, process count, top process by CPU and by memory (top N list in attributes), idle time, last active, logged-in users, battery (laptops), last boot, OS, motherboard and BIOS, IP address, agent version |
+| GPU sensors | Per GPU: usage, memory usage/used, temperature, power draw (limit in attributes), core and memory clock, fan speed, encoder/decoder usage. NVIDIA on Windows and Linux (through the driver's NVML library), AMD on Linux |
+| Binary sensors | Online, user active (keyboard/mouse within the threshold), screen lock, battery charging (laptops) |
 | Buttons | Shut down, restart, sleep, hibernate, lock, log off, turn displays off/on, Wake-on-LAN, one button per custom command |
 | Switch | Power: on sends Wake-on-LAN, off shuts down |
+| Update | Agent version; install new releases from Home Assistant |
 | Notify | Desktop notification: shows a native notification on the computer (Windows toast, Linux notification daemon, macOS Notification Center) |
 | Services | `pc_pulse.power`, `.wake`, `.kill_process`, `.run_command`, `.get_processes` (returns data) |
 
@@ -33,7 +35,13 @@ pc-pulse install-autostart  # start at login (Windows: run from an elevated term
 - **Linux:** creates a systemd user service. Power actions go through `systemctl` and `loginctl`. Idle time uses `xprintidle` when available, otherwise logind's idle hint.
 - **macOS:** creates a LaunchAgent. Shutdown, restart and log off use AppleScript (approve the automation prompt).
 
-Other commands: `pc-pulse run` (foreground), `sample` (print one JSON sample), `regenerate-token`, `uninstall-autostart`.
+Other commands: `pc-pulse run` (foreground), `sample` (print one JSON sample), `update` (install the latest release; `--check` only reports), `regenerate-token`, `uninstall-autostart`.
+
+### Updates
+
+The agent checks GitHub's public releases API once a day. When there is a newer release it downloads the binary for its platform, verifies the SHA-256 checksum, replaces itself and restarts. Each computer also has an *Agent* update entity in Home Assistant that shows the installed and latest version and can install updates. Set `auto_update = false` to only install from Home Assistant or `pc-pulse update`, or `update_repo = ""` to turn update checks off entirely. Install the agent somewhere your user can write to (the default for `install-autostart` setups such as `%LOCALAPPDATA%\pc-pulse`), or updates can't replace the binary.
+
+Memory speed comes from the SMBIOS tables. On Linux those are only readable by root, so non-root agents report the motherboard and BIOS but not memory speed.
 
 The config file lives at `%APPDATA%\pc-pulse\config.toml` (Windows), `~/.config/pc-pulse/config.toml` (Linux) or `~/Library/Application Support/pc-pulse/config.toml` (macOS). See [`agent.example.toml`](agent.example.toml). Restart the agent after editing it.
 
@@ -104,6 +112,8 @@ All endpoints except `/api/v1/health` need `Authorization: Bearer <token>`.
 | POST | `/api/v1/processes/kill` | `{"pid": 123}` or `{"name": "notepad.exe"}` |
 | POST | `/api/v1/power/{action}` | `shutdown`, `restart`, `sleep`, `hibernate`, `lock`, `logoff`, `monitor_off`, `monitor_on`; optional `{"delay_secs": N}` |
 | POST | `/api/v1/commands/{name}` | Run a command from the `[commands]` table |
+| GET | `/api/v1/update` | Check for a new release and return the update status |
+| POST | `/api/v1/update` | Install the latest release and restart |
 | POST | `/api/v1/notify` | `{"message": "...", "title": "..."}` shows a desktop notification |
 
 ## Security

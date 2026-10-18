@@ -1,4 +1,4 @@
-use super::{Activity, PowerAction, output_of, run_checked};
+use super::{Activity, Battery, PowerAction, output_of, run_checked};
 
 struct Session {
     id: String,
@@ -123,4 +123,38 @@ pub fn execute(action: PowerAction) -> anyhow::Result<()> {
         PowerAction::MonitorOff => run_checked("xset", &["dpms", "force", "off"]),
         PowerAction::MonitorOn => run_checked("xset", &["dpms", "force", "on"]),
     }
+}
+
+pub fn battery() -> Option<Battery> {
+    let supplies: Vec<_> = std::fs::read_dir("/sys/class/power_supply").ok()?.flatten().map(|e| e.path()).collect();
+    let read = |p: &std::path::Path, f: &str| {
+        std::fs::read_to_string(p.join(f)).ok().map(|s| s.trim().to_owned())
+    };
+    let bat = supplies.iter().find(|p| {
+        read(p, "type").as_deref() == Some("Battery") && read(p, "scope").as_deref() != Some("Device")
+    })?;
+    let percent: f32 = read(bat, "capacity")?.parse().ok()?;
+    let status = read(bat, "status").unwrap_or_default();
+    let plugged_in = supplies
+        .iter()
+        .find(|p| read(p, "type").as_deref() == Some("Mains"))
+        .and_then(|p| read(p, "online"))
+        .map(|v| v == "1");
+    let num = |f: &str| read(bat, f).and_then(|v| v.parse::<f64>().ok());
+    // Remaining time from energy/power (µWh / µW) or charge/current (µAh / µA).
+    let time_remaining_secs = if status == "Discharging" {
+        num("energy_now")
+            .zip(num("power_now"))
+            .or_else(|| num("charge_now").zip(num("current_now")))
+            .filter(|(_, rate)| *rate > 0.0)
+            .map(|(left, rate)| (left / rate * 3600.0) as u64)
+    } else {
+        None
+    };
+    Some(Battery {
+        percent,
+        charging: status == "Charging",
+        plugged_in,
+        time_remaining_secs,
+    })
 }

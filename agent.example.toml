@@ -27,6 +27,13 @@ allow_kill = true
 # Allow Home Assistant to show desktop notifications.
 allow_notify = true
 
+# Install new releases from GitHub automatically. The agent checks once every
+# update_check_hours using GitHub's public API. Set update_repo = "" to disable
+# update checks entirely (Home Assistant then can't install updates either).
+auto_update = true
+update_repo = "elyerinfox/pc-pulse"
+update_check_hours = 24
+
 # Commands Home Assistant may run. Each becomes a button. Only these can be run.
 [commands]
 open_steam = "start steam://open/main"

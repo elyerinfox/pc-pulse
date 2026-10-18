@@ -5,7 +5,7 @@ use windows_sys::Win32::Security::{
     AdjustTokenPrivileges, LUID_AND_ATTRIBUTES, LookupPrivilegeValueW, SE_PRIVILEGE_ENABLED,
     TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES, TOKEN_QUERY,
 };
-use windows_sys::Win32::System::Power::SetSuspendState;
+use windows_sys::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS, SetSuspendState};
 use windows_sys::Win32::System::RemoteDesktop::{
     WTS_CURRENT_SERVER_HANDLE, WTS_SESSION_INFOW, WTSActive, WTSDisconnected,
     WTSEnumerateSessionsW, WTSFreeMemory, WTSGetActiveConsoleSessionId, WTSINFOEXW,
@@ -22,7 +22,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     HWND_BROADCAST, PostMessageW, SC_MONITORPOWER, WM_SYSCOMMAND,
 };
 
-use super::{Activity, PowerAction, run_checked};
+use super::{Activity, Battery, PowerAction, run_checked};
 
 const WTS_SESSIONSTATE_LOCK: i32 = 0;
 const WTS_SESSIONSTATE_UNLOCK: i32 = 1;
@@ -204,4 +204,25 @@ pub fn execute(action: PowerAction) -> anyhow::Result<()> {
         }
         PowerAction::MonitorOn => wiggle_mouse(),
     }
+}
+
+pub fn battery() -> Option<Battery> {
+    let mut st: SYSTEM_POWER_STATUS = unsafe { std::mem::zeroed() };
+    if unsafe { GetSystemPowerStatus(&mut st) } == 0 {
+        return None;
+    }
+    // 128 = no system battery, 255 = unknown.
+    if st.BatteryFlag & 128 != 0 || st.BatteryLifePercent > 100 {
+        return None;
+    }
+    Some(Battery {
+        percent: st.BatteryLifePercent as f32,
+        charging: st.BatteryFlag & 8 != 0,
+        plugged_in: match st.ACLineStatus {
+            0 => Some(false),
+            1 => Some(true),
+            _ => None,
+        },
+        time_remaining_secs: (st.BatteryLifeTime != u32::MAX).then_some(st.BatteryLifeTime as u64),
+    })
 }

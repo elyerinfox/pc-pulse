@@ -1,4 +1,4 @@
-use super::{Activity, PowerAction, output_of, run_checked};
+use super::{Activity, Battery, PowerAction, output_of, run_checked};
 
 pub fn activity() -> Activity {
     // HIDIdleTime is reported in nanoseconds by the IOHIDSystem registry entry.
@@ -50,4 +50,25 @@ pub fn execute(action: PowerAction) -> anyhow::Result<()> {
         PowerAction::MonitorOff => run_checked("pmset", &["displaysleepnow"]),
         PowerAction::MonitorOn => run_checked("caffeinate", &["-u", "-t", "1"]),
     }
+}
+
+pub fn battery() -> Option<Battery> {
+    // e.g. "Now drawing from 'Battery Power'
+ -InternalBattery-0 (id=1)	85%; discharging; 4:12 remaining present: true"
+    let out = output_of("pmset", &["-g", "batt"])?;
+    let line = out.lines().find(|l| l.contains("InternalBattery"))?;
+    let after_tab = line.split('	').nth(1)?;
+    let mut parts = after_tab.split(';').map(str::trim);
+    let percent: f32 = parts.next()?.trim_end_matches('%').parse().ok()?;
+    let state = parts.next().unwrap_or("");
+    let time_remaining_secs = parts.next().and_then(|t| {
+        let (h, m) = t.split_whitespace().next()?.split_once(':')?;
+        Some(h.parse::<u64>().ok()? * 3600 + m.parse::<u64>().ok()? * 60)
+    });
+    Some(Battery {
+        percent,
+        charging: state == "charging",
+        plugged_in: Some(out.contains("'AC Power'")),
+        time_remaining_secs: if state == "discharging" { time_remaining_secs } else { None },
+    })
 }

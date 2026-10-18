@@ -74,7 +74,8 @@
     "binary_sensor": {
       "online": { "name": "Online" },
       "user_active": { "name": "User active" },
-      "screen_lock": { "name": "Screen lock" }
+      "screen_lock": { "name": "Screen lock" },
+      "battery_charging": { "name": "Battery charging" }
     },
     "button": {
       "shutdown": { "name": "Shut down" },
@@ -114,10 +115,28 @@
       "os": { "name": "Operating system" },
       "ip_address": { "name": "IP address" },
       "agent_version": { "name": "Agent version" },
-      "disk_usage": { "name": "Disk usage {mount}" }
+      "disk_usage": { "name": "Disk usage {mount}" },
+      "disk_read": { "name": "Disk read speed" },
+      "disk_write": { "name": "Disk write speed" },
+      "memory_speed": { "name": "Memory speed" },
+      "motherboard": { "name": "Motherboard" },
+      "battery": { "name": "Battery" },
+      "gpu_usage": { "name": "{gpu} usage" },
+      "gpu_memory_usage": { "name": "{gpu} memory usage" },
+      "gpu_memory_used": { "name": "{gpu} memory used" },
+      "gpu_temperature": { "name": "{gpu} temperature" },
+      "gpu_power": { "name": "{gpu} power" },
+      "gpu_core_clock": { "name": "{gpu} core clock" },
+      "gpu_memory_clock": { "name": "{gpu} memory clock" },
+      "gpu_fan": { "name": "{gpu} fan speed" },
+      "gpu_encoder": { "name": "{gpu} encoder usage" },
+      "gpu_decoder": { "name": "{gpu} decoder usage" }
     },
     "switch": {
       "power": { "name": "Power" }
+    },
+    "update": {
+      "agent": { "name": "Agent" }
     }
   },
   "services": {
