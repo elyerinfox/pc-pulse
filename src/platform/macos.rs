@@ -53,11 +53,11 @@ pub fn execute(action: PowerAction) -> anyhow::Result<()> {
 }
 
 pub fn battery() -> Option<Battery> {
-    // e.g. "Now drawing from 'Battery Power'
- -InternalBattery-0 (id=1)	85%; discharging; 4:12 remaining present: true"
+    // e.g. "Now drawing from 'Battery Power'" then
+    // " -InternalBattery-0 (id=1)<TAB>85%; discharging; 4:12 remaining present: true"
     let out = output_of("pmset", &["-g", "batt"])?;
     let line = out.lines().find(|l| l.contains("InternalBattery"))?;
-    let after_tab = line.split('	').nth(1)?;
+    let after_tab = line.split('\t').nth(1)?;
     let mut parts = after_tab.split(';').map(str::trim);
     let percent: f32 = parts.next()?.trim_end_matches('%').parse().ok()?;
     let state = parts.next().unwrap_or("");
