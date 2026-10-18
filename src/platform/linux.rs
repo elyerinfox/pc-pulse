@@ -141,7 +141,7 @@ pub fn battery() -> Option<Battery> {
         .and_then(|p| read(p, "online"))
         .map(|v| v == "1");
     let num = |f: &str| read(bat, f).and_then(|v| v.parse::<f64>().ok());
-    // Remaining time from energy/power (µWh / µW) or charge/current (µAh / µA).
+    // Remaining time from energy/power (uWh / uW) or charge/current (uAh / uA).
     let time_remaining_secs = if status == "Discharging" {
         num("energy_now")
             .zip(num("power_now"))
