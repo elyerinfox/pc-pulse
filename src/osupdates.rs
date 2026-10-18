@@ -51,7 +51,14 @@ $reboot = (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpd
 "#;
     let out = run(
         "powershell",
-        &["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", SCRIPT],
+        &[
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            SCRIPT,
+        ],
     )?;
     if !out.status.success() {
         tracing::warn!(
@@ -62,7 +69,10 @@ $reboot = (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpd
     }
     let v: serde_json::Value = serde_json::from_slice(&out.stdout).ok()?;
     let titles: Vec<String> = match &v["titles"] {
-        serde_json::Value::Array(a) => a.iter().filter_map(|t| t.as_str().map(str::to_owned)).collect(),
+        serde_json::Value::Array(a) => a
+            .iter()
+            .filter_map(|t| t.as_str().map(str::to_owned))
+            .collect(),
         serde_json::Value::String(s) => vec![s.clone()],
         _ => Vec::new(),
     };
@@ -79,36 +89,35 @@ $reboot = (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpd
 fn check() -> Option<OsUpdates> {
     let stdout = |o: &Output| String::from_utf8_lossy(&o.stdout).into_owned();
     // Uses the package lists the system already refreshes; no root needed.
-    let (source, titles): (&'static str, Vec<String>) = if let Some(o) =
-        run("apt", &["list", "--upgradable"]).filter(|o| o.status.success())
-    {
-        let titles = stdout(&o)
-            .lines()
-            .filter(|l| l.contains("[upgradable"))
-            .filter_map(|l| l.split('/').next().map(str::to_owned))
-            .collect();
-        ("apt", titles)
-    } else if let Some(o) = run("dnf", &["check-update", "-q"])
-        // Exit code 100 means updates are available.
-        .filter(|o| matches!(o.status.code(), Some(0) | Some(100)))
-    {
-        let titles = stdout(&o)
-            .lines()
-            .take_while(|l| !l.starts_with("Obsoleting"))
-            .filter(|l| l.split_whitespace().count() == 3)
-            .filter_map(|l| l.split_whitespace().next().map(str::to_owned))
-            .collect();
-        ("dnf", titles)
-    } else {
-        let o = run("checkupdates", &[])
-            // Exit code 2 means no updates.
-            .filter(|o| matches!(o.status.code(), Some(0) | Some(2)))?;
-        let titles = stdout(&o)
-            .lines()
-            .filter_map(|l| l.split_whitespace().next().map(str::to_owned))
-            .collect();
-        ("pacman", titles)
-    };
+    let (source, titles): (&'static str, Vec<String>) =
+        if let Some(o) = run("apt", &["list", "--upgradable"]).filter(|o| o.status.success()) {
+            let titles = stdout(&o)
+                .lines()
+                .filter(|l| l.contains("[upgradable"))
+                .filter_map(|l| l.split('/').next().map(str::to_owned))
+                .collect();
+            ("apt", titles)
+        } else if let Some(o) = run("dnf", &["check-update", "-q"])
+            // Exit code 100 means updates are available.
+            .filter(|o| matches!(o.status.code(), Some(0) | Some(100)))
+        {
+            let titles = stdout(&o)
+                .lines()
+                .take_while(|l| !l.starts_with("Obsoleting"))
+                .filter(|l| l.split_whitespace().count() == 3)
+                .filter_map(|l| l.split_whitespace().next().map(str::to_owned))
+                .collect();
+            ("dnf", titles)
+        } else {
+            let o = run("checkupdates", &[])
+                // Exit code 2 means no updates.
+                .filter(|o| matches!(o.status.code(), Some(0) | Some(2)))?;
+            let titles = stdout(&o)
+                .lines()
+                .filter_map(|l| l.split_whitespace().next().map(str::to_owned))
+                .collect();
+            ("pacman", titles)
+        };
     Some(OsUpdates {
         count: titles.len(),
         titles,

@@ -35,7 +35,10 @@ pub struct HardwareInfo {
 
 impl HardwareInfo {
     fn finish(mut self) -> Self {
-        self.memory_type = self.memory_modules.iter().find_map(|m| m.memory_type.clone());
+        self.memory_type = self
+            .memory_modules
+            .iter()
+            .find_map(|m| m.memory_type.clone());
         self.memory_speed_mts = self
             .memory_modules
             .iter()
@@ -138,7 +141,9 @@ fn imp() -> HardwareInfo {
         // Apple Silicon reports unified memory as a single entry.
         modules.push(MemoryModule {
             locator: Some("Unified".into()),
-            size_bytes: s(mem, "SPMemoryDataType").map(|x| parse_size(&x)).unwrap_or(0),
+            size_bytes: s(mem, "SPMemoryDataType")
+                .map(|x| parse_size(&x))
+                .unwrap_or(0),
             memory_type: s(mem, "dimm_type"),
             manufacturer: s(mem, "dimm_manufacturer"),
             ..Default::default()
@@ -247,7 +252,11 @@ fn is_placeholder(s: &str) -> bool {
         "to be filled by o.e.m."
             | "default string"
             | "system product name"
-            | "system manufacturer" | "not specified" | "unknown" | "none" | "n/a"
+            | "system manufacturer"
+            | "not specified"
+            | "unknown"
+            | "none"
+            | "n/a"
     )
 }
 

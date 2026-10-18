@@ -16,7 +16,9 @@ pub fn install(exe: &Path, config: &Path) -> Result<()> {
     );
     let create = |level: &str| {
         std::process::Command::new("schtasks")
-            .args(["/Create", "/F", "/SC", "ONLOGON", "/RL", level, "/TN", TASK_NAME, "/TR"])
+            .args([
+                "/Create", "/F", "/SC", "ONLOGON", "/RL", level, "/TN", TASK_NAME, "/TR",
+            ])
             .arg(&action)
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
@@ -38,14 +40,24 @@ pub fn install(exe: &Path, config: &Path) -> Result<()> {
         .status();
     let firewall = std::process::Command::new("netsh")
         .args([
-            "advfirewall", "firewall", "add", "rule", &rule, "dir=in", "action=allow",
-            &program, "enable=yes", "profile=private,domain",
+            "advfirewall",
+            "firewall",
+            "add",
+            "rule",
+            &rule,
+            "dir=in",
+            "action=allow",
+            &program,
+            "enable=yes",
+            "profile=private,domain",
         ])
         .stdout(std::process::Stdio::null())
         .status()
         .is_ok_and(|s| s.success());
     if !firewall {
-        println!("Could not add a firewall rule; allow the agent through Windows Firewall manually.");
+        println!(
+            "Could not add a firewall rule; allow the agent through Windows Firewall manually."
+        );
     }
     // Start it right away instead of waiting for the next logon.
     let _ = std::process::Command::new("schtasks")
@@ -65,7 +77,13 @@ pub fn uninstall() -> Result<()> {
         .status()?;
     anyhow::ensure!(status.success(), "schtasks failed ({status})");
     let _ = std::process::Command::new("netsh")
-        .args(["advfirewall", "firewall", "delete", "rule", &format!("name={TASK_NAME}")])
+        .args([
+            "advfirewall",
+            "firewall",
+            "delete",
+            "rule",
+            &format!("name={TASK_NAME}"),
+        ])
         .stdout(std::process::Stdio::null())
         .status();
     println!("Removed scheduled task '{TASK_NAME}'.");
@@ -96,7 +114,9 @@ pub fn install(exe: &Path, config: &Path) -> Result<()> {
         &["--user", "daemon-reload"][..],
         &["--user", "enable", "--now", &format!("{TASK_NAME}.service")],
     ] {
-        let status = std::process::Command::new("systemctl").args(args).status()?;
+        let status = std::process::Command::new("systemctl")
+            .args(args)
+            .status()?;
         anyhow::ensure!(status.success(), "systemctl {args:?} failed");
     }
     println!(
@@ -109,7 +129,12 @@ pub fn install(exe: &Path, config: &Path) -> Result<()> {
 #[cfg(target_os = "linux")]
 pub fn uninstall() -> Result<()> {
     let _ = std::process::Command::new("systemctl")
-        .args(["--user", "disable", "--now", &format!("{TASK_NAME}.service")])
+        .args([
+            "--user",
+            "disable",
+            "--now",
+            &format!("{TASK_NAME}.service"),
+        ])
         .status();
     let path = unit_path()?;
     if path.exists() {

@@ -15,7 +15,13 @@ pub fn advertise(cfg: &Config) -> Result<ServiceDaemon> {
     let host = hostname::get()?.to_string_lossy().into_owned();
     let host_label: String = host
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '-' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' {
+                c
+            } else {
+                '-'
+            }
+        })
         .collect();
     let properties: HashMap<String, String> = HashMap::from([
         ("id".into(), cfg.id.clone()),
@@ -30,7 +36,10 @@ pub fn advertise(cfg: &Config) -> Result<ServiceDaemon> {
         SERVICE_TYPE,
         &cfg.name,
         &format!("{host_label}.local."),
-        primary.map(|ip| ip.to_string()).unwrap_or_default().as_str(),
+        primary
+            .map(|ip| ip.to_string())
+            .unwrap_or_default()
+            .as_str(),
         cfg.port,
         properties,
     )?;

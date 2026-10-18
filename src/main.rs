@@ -22,7 +22,10 @@ use crate::collector::Collector;
 use crate::config::Config;
 
 #[derive(Parser)]
-#[command(version, about = "Home Assistant agent: reports system info and accepts power commands")]
+#[command(
+    version,
+    about = "Home Assistant agent: reports system info and accepts power commands"
+)]
 struct Cli {
     /// Path to the config file (created on first run).
     #[arg(long, global = true)]
@@ -125,7 +128,9 @@ async fn main() -> Result<()> {
         Command::Sample => {
             let mut c = Collector::new();
             c.collect(&cfg);
-            std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL.max(std::time::Duration::from_millis(500)));
+            std::thread::sleep(
+                sysinfo::MINIMUM_CPU_UPDATE_INTERVAL.max(std::time::Duration::from_millis(500)),
+            );
             println!("{}", serde_json::to_string_pretty(&c.collect(&cfg))?);
             return Ok(());
         }
@@ -139,8 +144,13 @@ async fn main() -> Result<()> {
             let release = update::check(&cfg, &status)?;
             let latest = status.lock().unwrap().latest.clone().unwrap_or_default();
             match release {
-                None => println!("pc-pulse {} is up to date (latest: {latest})", update::VERSION),
-                Some(r) if check => println!("Update available: {} -> {}", update::VERSION, r.version),
+                None => println!(
+                    "pc-pulse {} is up to date (latest: {latest})",
+                    update::VERSION
+                ),
+                Some(r) if check => {
+                    println!("Update available: {} -> {}", update::VERSION, r.version)
+                }
                 Some(r) => {
                     update::install(&r)?;
                     println!("Installed {}. Restart the agent to use it.", r.version);

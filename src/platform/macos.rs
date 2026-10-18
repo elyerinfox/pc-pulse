@@ -34,7 +34,10 @@ pub fn supported_actions() -> Vec<PowerAction> {
 fn system_events(verb: &str) -> anyhow::Result<()> {
     run_checked(
         "osascript",
-        &["-e", &format!("tell application \"System Events\" to {verb}")],
+        &[
+            "-e",
+            &format!("tell application \"System Events\" to {verb}"),
+        ],
     )
 }
 
@@ -43,9 +46,7 @@ pub fn execute(action: PowerAction) -> anyhow::Result<()> {
         PowerAction::Shutdown => system_events("shut down"),
         PowerAction::Restart => system_events("restart"),
         PowerAction::Sleep | PowerAction::Hibernate => run_checked("pmset", &["sleepnow"]),
-        PowerAction::Lock => system_events(
-            "keystroke \"q\" using {control down, command down}",
-        ),
+        PowerAction::Lock => system_events("keystroke \"q\" using {control down, command down}"),
         PowerAction::Logoff => system_events("log out"),
         PowerAction::MonitorOff => run_checked("pmset", &["displaysleepnow"]),
         PowerAction::MonitorOn => run_checked("caffeinate", &["-u", "-t", "1"]),
@@ -69,6 +70,10 @@ pub fn battery() -> Option<Battery> {
         percent,
         charging: state == "charging",
         plugged_in: Some(out.contains("'AC Power'")),
-        time_remaining_secs: if state == "discharging" { time_remaining_secs } else { None },
+        time_remaining_secs: if state == "discharging" {
+            time_remaining_secs
+        } else {
+            None
+        },
     })
 }

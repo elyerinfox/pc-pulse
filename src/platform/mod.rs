@@ -127,7 +127,10 @@ pub fn spawn_shell(command: &str) -> anyhow::Result<()> {
 /// Runs a program and returns stdout if it exited successfully.
 #[allow(dead_code)]
 pub(crate) fn output_of(program: &str, args: &[&str]) -> Option<String> {
-    let out = std::process::Command::new(program).args(args).output().ok()?;
+    let out = std::process::Command::new(program)
+        .args(args)
+        .output()
+        .ok()?;
     out.status
         .success()
         .then(|| String::from_utf8_lossy(&out.stdout).into_owned())

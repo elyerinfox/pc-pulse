@@ -15,8 +15,8 @@ use crate::collector::{Collector, Shared, Snapshot};
 use crate::config::Config;
 use crate::notify;
 use crate::osupdates::{OsUpdates, SharedOsUpdates};
-use crate::update::{self, SharedUpdate, UpdateStatus};
 use crate::platform::{self, PowerAction};
+use crate::update::{self, SharedUpdate, UpdateStatus};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -104,7 +104,10 @@ struct StatusResponse<'a> {
 async fn status(State(state): State<AppState>) -> ApiResult<Response> {
     let guard = state.shared.read().await;
     let Some(snapshot) = guard.as_ref() else {
-        return Err(err(StatusCode::SERVICE_UNAVAILABLE, "still collecting initial sample"));
+        return Err(err(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "still collecting initial sample",
+        ));
     };
     let body = StatusResponse {
         snapshot,
@@ -132,7 +135,12 @@ async fn processes(
         "memory" => list.sort_by_key(|p| std::cmp::Reverse(p.memory_bytes)),
         "name" => list.sort_by_key(|p| p.name.to_lowercase()),
         "pid" => list.sort_by_key(|p| p.pid),
-        other => return Err(err(StatusCode::BAD_REQUEST, format!("unknown sort '{other}'"))),
+        other => {
+            return Err(err(
+                StatusCode::BAD_REQUEST,
+                format!("unknown sort '{other}'"),
+            ));
+        }
     }
     if let Some(limit) = q.limit {
         list.truncate(limit);
@@ -146,10 +154,7 @@ struct KillRequest {
     name: Option<String>,
 }
 
-async fn kill(
-    State(state): State<AppState>,
-    Json(req): Json<KillRequest>,
-) -> ApiResult<Response> {
+async fn kill(State(state): State<AppState>, Json(req): Json<KillRequest>) -> ApiResult<Response> {
     if !state.cfg.allow_kill {
         return Err(err(StatusCode::FORBIDDEN, "killing processes is disabled"));
     }
@@ -174,9 +179,9 @@ async fn kill(
             }
             let pname = proc_.name().to_string_lossy().to_lowercase();
             let matches = req.pid == Some(pid.as_u32())
-                || name.as_deref().is_some_and(|n| {
-                    pname == n || pname.strip_suffix(".exe") == Some(n)
-                });
+                || name
+                    .as_deref()
+                    .is_some_and(|n| pname == n || pname.strip_suffix(".exe") == Some(n));
             if matches {
                 if proc_.kill() {
                     killed.push(pid.as_u32());
@@ -311,7 +316,10 @@ async fn update_install(State(state): State<AppState>) -> ApiResult<Response> {
         return Err(err(StatusCode::FORBIDDEN, "updates are disabled"));
     }
     if state.update.lock().unwrap().installing {
-        return Err(err(StatusCode::CONFLICT, "an update is already being installed"));
+        return Err(err(
+            StatusCode::CONFLICT,
+            "an update is already being installed",
+        ));
     }
     let (cfg, status) = (state.cfg.clone(), state.update.clone());
     let release = tokio::task::spawn_blocking(move || update::check(&cfg, &status))
@@ -334,7 +342,7 @@ async fn update_install(State(state): State<AppState>) -> ApiResult<Response> {
         match result {
             Ok(Ok(())) => {
                 drop(s);
-                update::restart();
+                update::restart_or_report(&st);
             }
             Ok(Err(e)) => {
                 tracing::error!("update failed: {e:#}");

@@ -338,10 +338,26 @@ impl Collector {
             i.mac_address != "00:00:00:00:00:00" && !i.name.to_lowercase().contains("loopback")
         };
         let network = NetworkTotals {
-            rx_bytes_per_sec: interfaces.iter().filter(physical).map(|i| i.rx_bytes_per_sec).sum(),
-            tx_bytes_per_sec: interfaces.iter().filter(physical).map(|i| i.tx_bytes_per_sec).sum(),
-            rx_bytes_total: interfaces.iter().filter(physical).map(|i| i.rx_bytes_total).sum(),
-            tx_bytes_total: interfaces.iter().filter(physical).map(|i| i.tx_bytes_total).sum(),
+            rx_bytes_per_sec: interfaces
+                .iter()
+                .filter(physical)
+                .map(|i| i.rx_bytes_per_sec)
+                .sum(),
+            tx_bytes_per_sec: interfaces
+                .iter()
+                .filter(physical)
+                .map(|i| i.tx_bytes_per_sec)
+                .sum(),
+            rx_bytes_total: interfaces
+                .iter()
+                .filter(physical)
+                .map(|i| i.rx_bytes_total)
+                .sum(),
+            tx_bytes_total: interfaces
+                .iter()
+                .filter(physical)
+                .map(|i| i.tx_bytes_total)
+                .sum(),
         };
 
         let primary_ip = local_ip_address::local_ip().ok().map(|ip| ip.to_string());
@@ -377,7 +393,9 @@ impl Collector {
 
         let now = Utc::now();
         let act = platform::activity();
-        let active = act.idle_seconds.map(|idle| idle < cfg.active_threshold_secs);
+        let active = act
+            .idle_seconds
+            .map(|idle| idle < cfg.active_threshold_secs);
         if let Some(idle) = act.idle_seconds {
             self.last_active = Some(now - chrono::Duration::seconds(idle as i64));
         }

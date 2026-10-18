@@ -27,7 +27,8 @@ impl GpuInfo {
         if let (Some(used), Some(total)) = (self.memory_used_bytes, self.memory_total_bytes)
             && total > 0
         {
-            self.memory_usage_percent = Some((used as f64 / total as f64 * 1000.0).round() as f32 / 10.0);
+            self.memory_usage_percent =
+                Some((used as f64 / total as f64 * 1000.0).round() as f32 / 10.0);
         }
         self
     }
@@ -85,7 +86,10 @@ fn nvidia(nvml: &nvml_wrapper::Nvml) -> Vec<GpuInfo> {
                 memory_used_bytes: mem.as_ref().map(|m| m.used),
                 memory_total_bytes: mem.as_ref().map(|m| m.total),
                 temperature_celsius: d.temperature(TemperatureSensor::Gpu).ok().map(|t| t as f32),
-                power_watts: d.power_usage().ok().map(|mw| (mw as f32 / 100.0).round() / 10.0),
+                power_watts: d
+                    .power_usage()
+                    .ok()
+                    .map(|mw| (mw as f32 / 100.0).round() / 10.0),
                 power_limit_watts: d.enforced_power_limit().ok().map(|mw| (mw / 1000) as f32),
                 core_clock_mhz: d.clock_info(Clock::Graphics).ok(),
                 memory_clock_mhz: d.clock_info(Clock::Memory).ok(),
@@ -115,9 +119,9 @@ fn amd_sysfs() -> Vec<GpuInfo> {
         .flatten()
         .map(|e| e.path())
         .filter(|p| {
-            p.file_name()
-                .and_then(|n| n.to_str())
-                .is_some_and(|n| n.starts_with("card") && n[4..].chars().all(|c| c.is_ascii_digit()))
+            p.file_name().and_then(|n| n.to_str()).is_some_and(|n| {
+                n.starts_with("card") && n[4..].chars().all(|c| c.is_ascii_digit())
+            })
         })
         .collect();
     cards.sort();

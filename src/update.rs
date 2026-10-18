@@ -158,7 +158,11 @@ pub fn install(release: &Release) -> Result<()> {
     match &release.checksum_url {
         Some(url) => {
             let expected = String::from_utf8(download(url)?)?;
-            let expected = expected.split_whitespace().next().unwrap_or("").to_lowercase();
+            let expected = expected
+                .split_whitespace()
+                .next()
+                .unwrap_or("")
+                .to_lowercase();
             let actual = hex(&Sha256::digest(&binary));
             if expected != actual {
                 bail!("checksum mismatch: expected {expected}, got {actual}");
@@ -188,7 +192,11 @@ pub fn install(release: &Release) -> Result<()> {
     }
     #[cfg(not(windows))]
     std::fs::rename(&new, &exe).context("installing the new executable")?;
-    tracing::info!("installed pc-pulse {} at {}", release.version, exe.display());
+    tracing::info!(
+        "installed pc-pulse {} at {}",
+        release.version,
+        exe.display()
+    );
     Ok(())
 }
 
@@ -206,34 +214,54 @@ pub fn cleanup() {
 }
 
 /// Starts the freshly installed binary with the same arguments and ends this process.
-pub fn restart() -> ! {
-    let exe = std::env::current_exe().expect("current exe");
+/// Only returns if that fails; the agent then keeps running the old version.
+fn restart() -> std::io::Error {
+    let exe = match std::env::current_exe() {
+        Ok(exe) => exe,
+        Err(e) => return e,
+    };
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     tracing::info!("restarting into the new version");
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
         // Replaces this process, so systemd/launchd keep tracking the same PID.
-        let err = std::process::Command::new(&exe).args(&args).exec();
-        tracing::error!("restart failed: {err}");
-        // The service manager restarts us (with the new binary) on failure.
-        std::process::exit(1);
+        std::process::Command::new(&exe).args(&args).exec()
     }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         const CREATE_BREAKAWAY_FROM_JOB: u32 = 0x0100_0000;
-        let spawn = |flags| std::process::Command::new(&exe).args(&args).creation_flags(flags).spawn();
+        use std::process::Stdio;
+        // Under Task Scheduler the agent has no valid standard handles; passing them on
+        // makes CreateProcess fail with ERROR_NOT_SUPPORTED.
+        let spawn = |flags| {
+            std::process::Command::new(&exe)
+                .args(&args)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .creation_flags(flags)
+                .spawn()
+        };
         // Break away from the scheduled task's job so the new process outlives this one.
-        if let Err(e) = spawn(CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB)
+        match spawn(CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB)
             .or_else(|_| spawn(CREATE_NO_WINDOW))
         {
-            tracing::error!("restart failed: {e}");
-            std::process::exit(1);
+            Ok(_) => std::process::exit(0),
+            Err(e) => e,
         }
-        std::process::exit(0);
     }
+}
+
+/// Restarts into the installed update, or records why that failed and keeps running.
+pub fn restart_or_report(status: &SharedUpdate) {
+    let err = restart();
+    tracing::error!("restart after update failed: {err}");
+    status.lock().unwrap().error = Some(format!(
+        "installed, but restarting failed ({err}); restart the agent to use the new version"
+    ));
 }
 
 /// Checks, installs and restarts. Used by the daily task and the API.
@@ -270,7 +298,7 @@ pub fn spawn_checker(cfg: Arc<Config>, status: SharedUpdate) {
             })
             .await;
             match outcome {
-                Ok(Ok(true)) => restart(),
+                Ok(Ok(true)) => restart_or_report(&status),
                 Ok(Ok(false)) => {}
                 Ok(Err(e)) => tracing::warn!("update check failed: {e:#}"),
                 Err(e) => tracing::error!("update task failed: {e}"),

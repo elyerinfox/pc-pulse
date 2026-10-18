@@ -126,12 +126,19 @@ pub fn execute(action: PowerAction) -> anyhow::Result<()> {
 }
 
 pub fn battery() -> Option<Battery> {
-    let supplies: Vec<_> = std::fs::read_dir("/sys/class/power_supply").ok()?.flatten().map(|e| e.path()).collect();
+    let supplies: Vec<_> = std::fs::read_dir("/sys/class/power_supply")
+        .ok()?
+        .flatten()
+        .map(|e| e.path())
+        .collect();
     let read = |p: &std::path::Path, f: &str| {
-        std::fs::read_to_string(p.join(f)).ok().map(|s| s.trim().to_owned())
+        std::fs::read_to_string(p.join(f))
+            .ok()
+            .map(|s| s.trim().to_owned())
     };
     let bat = supplies.iter().find(|p| {
-        read(p, "type").as_deref() == Some("Battery") && read(p, "scope").as_deref() != Some("Device")
+        read(p, "type").as_deref() == Some("Battery")
+            && read(p, "scope").as_deref() != Some("Device")
     })?;
     let percent: f32 = read(bat, "capacity")?.parse().ok()?;
     let status = read(bat, "status").unwrap_or_default();

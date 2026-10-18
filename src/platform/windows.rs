@@ -5,7 +5,9 @@ use windows_sys::Win32::Security::{
     AdjustTokenPrivileges, LUID_AND_ATTRIBUTES, LookupPrivilegeValueW, SE_PRIVILEGE_ENABLED,
     TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES, TOKEN_QUERY,
 };
-use windows_sys::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS, SetSuspendState};
+use windows_sys::Win32::System::Power::{
+    GetSystemPowerStatus, SYSTEM_POWER_STATUS, SetSuspendState,
+};
 use windows_sys::Win32::System::RemoteDesktop::{
     WTS_CURRENT_SERVER_HANDLE, WTS_SESSION_INFOW, WTSActive, WTSDisconnected,
     WTSEnumerateSessionsW, WTSFreeMemory, WTSGetActiveConsoleSessionId, WTSINFOEXW,
@@ -40,11 +42,21 @@ fn idle_seconds() -> Option<u64> {
     Some(u64::from(now.wrapping_sub(info.dwTime)) / 1000)
 }
 
-fn query_session<T, R>(session: u32, class: i32, read: impl FnOnce(*const T, u32) -> R) -> Option<R> {
+fn query_session<T, R>(
+    session: u32,
+    class: i32,
+    read: impl FnOnce(*const T, u32) -> R,
+) -> Option<R> {
     let mut buf: *mut u16 = std::ptr::null_mut();
     let mut len = 0u32;
     let ok = unsafe {
-        WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE, session, class, &mut buf, &mut len)
+        WTSQuerySessionInformationW(
+            WTS_CURRENT_SERVER_HANDLE,
+            session,
+            class,
+            &mut buf,
+            &mut len,
+        )
     };
     if ok == 0 || buf.is_null() {
         return None;
@@ -93,7 +105,8 @@ pub fn activity() -> Activity {
 pub fn logged_in_users() -> Vec<String> {
     let mut ptr: *mut WTS_SESSION_INFOW = std::ptr::null_mut();
     let mut count = 0u32;
-    if unsafe { WTSEnumerateSessionsW(WTS_CURRENT_SERVER_HANDLE, 0, 1, &mut ptr, &mut count) } == 0 {
+    if unsafe { WTSEnumerateSessionsW(WTS_CURRENT_SERVER_HANDLE, 0, 1, &mut ptr, &mut count) } == 0
+    {
         return Vec::new();
     }
     let sessions = unsafe { std::slice::from_raw_parts(ptr, count as usize) };
@@ -123,7 +136,10 @@ fn enable_shutdown_privilege() {
             return;
         }
         let name: Vec<u16> = "SeShutdownPrivilege\0".encode_utf16().collect();
-        let mut luid = LUID { LowPart: 0, HighPart: 0 };
+        let mut luid = LUID {
+            LowPart: 0,
+            HighPart: 0,
+        };
         if LookupPrivilegeValueW(std::ptr::null(), name.as_ptr(), &mut luid) != 0 {
             let privileges = TOKEN_PRIVILEGES {
                 PrivilegeCount: 1,
@@ -148,7 +164,11 @@ fn enable_shutdown_privilege() {
 fn suspend(hibernate: bool) -> anyhow::Result<()> {
     enable_shutdown_privilege();
     let ok = unsafe { SetSuspendState(hibernate, false, false) };
-    anyhow::ensure!(ok, "SetSuspendState failed: {}", std::io::Error::last_os_error());
+    anyhow::ensure!(
+        ok,
+        "SetSuspendState failed: {}",
+        std::io::Error::last_os_error()
+    );
     Ok(())
 }
 
@@ -167,7 +187,13 @@ fn wiggle_mouse() -> anyhow::Result<()> {
         },
     };
     let inputs = [make(1), make(-1)];
-    let sent = unsafe { SendInput(inputs.len() as u32, inputs.as_ptr(), size_of::<INPUT>() as i32) };
+    let sent = unsafe {
+        SendInput(
+            inputs.len() as u32,
+            inputs.as_ptr(),
+            size_of::<INPUT>() as i32,
+        )
+    };
     anyhow::ensure!(sent as usize == inputs.len(), "SendInput failed");
     Ok(())
 }
