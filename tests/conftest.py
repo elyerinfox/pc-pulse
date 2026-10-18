@@ -15,15 +15,20 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import pytest_socket
 
 if sys.platform == "win32":
     # Home Assistant only supports Linux/macOS. When running the tests on Windows
     # the proactor event loop needs a TCP socketpair, which the socket guard blocks.
-    import pytest_socket
-
     pytest_socket.disable_socket = lambda *args, **kwargs: None
 
 REPO = Path(__file__).resolve().parent.parent
+
+
+@pytest.fixture
+def allow_sockets() -> None:
+    """Let a test talk to the live agent over TCP on localhost."""
+    pytest_socket.enable_socket()
 
 
 @pytest.fixture(autouse=True)
@@ -141,8 +146,9 @@ def _free_port() -> int:
 
 @pytest.fixture(scope="session")
 def live_agent() -> Generator[dict[str, Any]]:
-    """Build and run the real Rust agent on localhost with power actions disabled
-    except harmless ones verified through the API."""
+    """Build and run the real Rust agent on localhost with power actions disabled."""
+    # Session fixtures run after Home Assistant's plugin disabled sockets.
+    pytest_socket.enable_socket()
     exe_name = "pc-pulse.exe" if os.name == "nt" else "pc-pulse"
     exe = REPO / "target" / "debug" / exe_name
     if not exe.exists():

@@ -7,6 +7,7 @@ import subprocess
 import sys
 from typing import Any
 
+import pytest
 from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_TOKEN
 from homeassistant.core import HomeAssistant
@@ -14,6 +15,8 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr
 
 from custom_components.pc_pulse.const import DOMAIN
+
+pytestmark = pytest.mark.usefixtures("allow_sockets")
 
 
 def _device(hass: HomeAssistant, entry) -> dr.DeviceEntry:
