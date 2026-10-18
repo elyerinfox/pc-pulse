@@ -67,6 +67,10 @@ async def test_entities(hass: HomeAssistant, mock_client: AsyncMock) -> None:
     assert hass.states.get("sensor.test_pc_disk_read_speed").state == "1.048576"
     assert hass.states.get("sensor.test_pc_battery").state == "80.0"
     assert hass.states.get("binary_sensor.test_pc_battery_charging").state == STATE_ON
+    updates = hass.states.get("sensor.test_pc_os_updates")
+    assert updates.state == "2"
+    assert updates.attributes["updates"] == ["Security update", "Driver update"]
+    assert hass.states.get("binary_sensor.test_pc_restart_required").state == STATE_ON
     # Load average is not meaningful on Windows.
     assert hass.states.get("sensor.test_pc_load_1m") is None
 

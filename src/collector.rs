@@ -152,6 +152,7 @@ pub struct Capabilities {
     pub kill: bool,
     pub notify: bool,
     pub update: bool,
+    pub os_updates: bool,
     pub commands: Vec<String>,
 }
 
@@ -450,6 +451,7 @@ pub fn capabilities(cfg: &Config) -> Capabilities {
         kill: cfg.allow_kill,
         notify: cfg.allow_notify,
         update: !cfg.update_repo.is_empty(),
+        os_updates: crate::osupdates::enabled(cfg),
         commands: cfg.commands.keys().cloned().collect(),
     }
 }

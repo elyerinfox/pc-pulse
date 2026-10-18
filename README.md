@@ -9,9 +9,9 @@ Monitor and control your PCs from Home Assistant. This repository has two parts:
 
 | Type | Entities |
 | --- | --- |
-| Sensors | CPU usage (per-core attributes), CPU frequency, CPU temperature\*, load average (Linux/macOS), memory usage/used/available, memory speed and type (per-module details in attributes), swap, disk usage per drive, disk read/write speed, download/upload speed, total traffic, process count, top process by CPU and by memory (top N list in attributes), idle time, last active, logged-in users, battery (laptops), last boot, OS, motherboard and BIOS, IP address, agent version |
+| Sensors | CPU usage (per-core attributes), CPU frequency, CPU temperature\*, load average (Linux/macOS), memory usage/used/available, memory speed and type (per-module details in attributes), swap, disk usage per drive, disk read/write speed, download/upload speed, total traffic, process count, top process by CPU and by memory (top N list in attributes), idle time, last active, logged-in users, pending OS updates (titles in attributes), battery (laptops), last boot, OS, motherboard and BIOS, IP address, agent version |
 | GPU sensors | Per GPU: usage, memory usage/used, temperature, power draw (limit in attributes), core and memory clock, fan speed, encoder/decoder usage. NVIDIA on Windows and Linux (through the driver's NVML library), AMD on Linux |
-| Binary sensors | Online, user active (keyboard/mouse within the threshold), screen lock, battery charging (laptops) |
+| Binary sensors | Online, user active (keyboard/mouse within the threshold), screen lock, restart required (after OS updates), battery charging (laptops) |
 | Buttons | Shut down, restart, sleep, hibernate, lock, log off, turn displays off/on, Wake-on-LAN, one button per custom command |
 | Switch | Power: on sends Wake-on-LAN, off shuts down |
 | Update | Agent version; install new releases from Home Assistant |
@@ -40,6 +40,8 @@ Other commands: `pc-pulse run` (foreground), `sample` (print one JSON sample), `
 ### Updates
 
 The agent checks GitHub's public releases API once a day. When there is a newer release it downloads the binary for its platform, verifies the SHA-256 checksum, replaces itself and restarts. Each computer also has an *Agent* update entity in Home Assistant that shows the installed and latest version and can install updates. Set `auto_update = false` to only install from Home Assistant or `pc-pulse update`, or `update_repo = ""` to turn update checks off entirely. Install the agent somewhere your user can write to (the default for `install-autostart` setups such as `%LOCALAPPDATA%\pc-pulse`), or updates can't replace the binary.
+
+Pending OS updates are checked every 6 hours (`os_update_check_hours`): Windows Update on Windows, `apt`, `dnf` or `checkupdates` (pacman-contrib) on Linux using the already downloaded package lists, and `softwareupdate` on macOS. Nothing is installed; it only reports.
 
 Memory speed comes from the SMBIOS tables. On Linux those are only readable by root, so non-root agents report the motherboard and BIOS but not memory speed.
 

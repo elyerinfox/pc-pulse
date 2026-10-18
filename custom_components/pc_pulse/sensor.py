@@ -294,6 +294,18 @@ SENSORS: tuple[ComputerSensorDescription, ...] = (
         exists_fn=lambda layout: layout.get("has_battery", False),
     ),
     ComputerSensorDescription(
+        key="os_updates",
+        translation_key="os_updates",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda d: d["os_updates"]["count"],
+        attrs_fn=lambda d: {
+            "updates": d["os_updates"]["titles"],
+            "source": d["os_updates"]["source"],
+            "last_checked": d["os_updates"]["checked_at"],
+        },
+        exists_fn=lambda layout: (layout.get("capabilities") or {}).get("os_updates", False),
+    ),
+    ComputerSensorDescription(
         key="process_count",
         translation_key="process_count",
         state_class=SensorStateClass.MEASUREMENT,

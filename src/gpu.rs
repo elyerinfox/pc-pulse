@@ -22,6 +22,7 @@ pub struct GpuInfo {
 }
 
 impl GpuInfo {
+    #[cfg_attr(target_os = "macos", allow(dead_code))]
     fn finish(mut self) -> Self {
         if let (Some(used), Some(total)) = (self.memory_used_bytes, self.memory_total_bytes)
             && total > 0
@@ -53,7 +54,7 @@ impl Gpus {
 
     pub fn collect(&self) -> Vec<GpuInfo> {
         #[allow(unused_mut)]
-        let mut gpus = Vec::new();
+        let mut gpus: Vec<GpuInfo> = Vec::new();
         #[cfg(any(windows, target_os = "linux"))]
         if let Some(nvml) = &self.nvml {
             gpus.extend(nvidia(nvml));

@@ -139,12 +139,18 @@ def make_status(**overrides: Any) -> dict[str, Any]:
             "release_notes": "Notes", "available": True, "auto": False, "installing": False,
             "checked_at": "2026-10-17T12:00:00Z", "error": None,
         },
+        "os_updates": {
+            "count": 2, "titles": ["Security update", "Driver update"],
+            "reboot_required": True, "source": "windows_update",
+            "checked_at": "2026-10-17T12:00:00Z",
+        },
         "capabilities": {
             "power": ["shutdown", "restart", "sleep", "hibernate", "lock", "logoff",
                       "monitor_off", "monitor_on"],
             "kill": True,
             "notify": True,
             "update": True,
+            "os_updates": True,
             "commands": ["open_steam"],
         },
     }

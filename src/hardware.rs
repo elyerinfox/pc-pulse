@@ -239,6 +239,7 @@ fn parse_smbios(table: &[u8]) -> HardwareInfo {
     info
 }
 
+#[cfg_attr(target_os = "macos", allow(dead_code))]
 fn is_placeholder(s: &str) -> bool {
     let l = s.to_ascii_lowercase();
     matches!(
@@ -250,6 +251,7 @@ fn is_placeholder(s: &str) -> bool {
     )
 }
 
+#[cfg_attr(target_os = "macos", allow(dead_code))]
 fn memory_type_name(code: u8) -> Option<&'static str> {
     Some(match code {
         0x12 => "DDR",

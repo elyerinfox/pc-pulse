@@ -75,7 +75,8 @@
       "online": { "name": "Online" },
       "user_active": { "name": "User active" },
       "screen_lock": { "name": "Screen lock" },
-      "battery_charging": { "name": "Battery charging" }
+      "battery_charging": { "name": "Battery charging" },
+      "restart_required": { "name": "Restart required" }
     },
     "button": {
       "shutdown": { "name": "Shut down" },
@@ -121,6 +122,7 @@
       "memory_speed": { "name": "Memory speed" },
       "motherboard": { "name": "Motherboard" },
       "battery": { "name": "Battery" },
+      "os_updates": { "name": "OS updates" },
       "gpu_usage": { "name": "{gpu} usage" },
       "gpu_memory_usage": { "name": "{gpu} memory usage" },
       "gpu_memory_used": { "name": "{gpu} memory used" },

@@ -25,6 +25,8 @@ async def async_setup_entry(
         UserActiveSensor(coordinator, "user_active"),
         LockSensor(coordinator, "screen_lock"),
     ]
+    if (coordinator.layout.get("capabilities") or {}).get("os_updates"):
+        entities.append(RestartRequiredSensor(coordinator, "restart_required"))
     if coordinator.layout.get("has_battery"):
         entities.append(ChargingSensor(coordinator, "battery_charging"))
     async_add_entities(entities)
@@ -89,3 +91,20 @@ class ChargingSensor(ComputerEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         return self.coordinator.data["battery"]["charging"]
+
+
+class RestartRequiredSensor(ComputerEntity, BinarySensorEntity):
+    """Whether installed OS updates are waiting for a restart."""
+
+    _attr_translation_key = "restart_required"
+
+    def _reboot(self) -> bool | None:
+        return ((self.coordinator.data or {}).get("os_updates") or {}).get("reboot_required")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self._reboot() is not None
+
+    @property
+    def is_on(self) -> bool | None:
+        return self._reboot()

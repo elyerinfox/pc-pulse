@@ -1,7 +1,8 @@
 {
   "entity": {
     "binary_sensor": {
-      "user_active": { "default": "mdi:account-off", "state": { "on": "mdi:account" } }
+      "user_active": { "default": "mdi:account-off", "state": { "on": "mdi:account" } },
+      "restart_required": { "default": "mdi:restart", "state": { "on": "mdi:restart-alert" } }
     },
     "button": {
       "shutdown": { "default": "mdi:power" },
@@ -43,6 +44,7 @@
       "disk_read": { "default": "mdi:harddisk" },
       "disk_write": { "default": "mdi:harddisk" },
       "memory_speed": { "default": "mdi:memory" },
+      "os_updates": { "default": "mdi:package-up" },
       "motherboard": { "default": "mdi:developer-board" },
       "gpu_usage": { "default": "mdi:expansion-card" },
       "gpu_memory_usage": { "default": "mdi:expansion-card-variant" },

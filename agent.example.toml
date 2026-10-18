@@ -34,6 +34,10 @@ auto_update = true
 update_repo = "elyerinfox/pc-pulse"
 update_check_hours = 24
 
+# Hours between checks for pending OS updates (Windows Update, apt/dnf/pacman,
+# macOS softwareupdate). 0 turns the check off.
+os_update_check_hours = 6
+
 # Commands Home Assistant may run. Each becomes a button. Only these can be run.
 [commands]
 open_steam = "start steam://open/main"

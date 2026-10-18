@@ -14,6 +14,7 @@ use sysinfo::{Pid, ProcessesToUpdate};
 use crate::collector::{Collector, Shared};
 use crate::config::Config;
 use crate::notify;
+use crate::osupdates::SharedOsUpdates;
 use crate::update::{self, SharedUpdate};
 use crate::platform::{self, PowerAction};
 
@@ -23,6 +24,7 @@ pub struct AppState {
     pub collector: Arc<Mutex<Collector>>,
     pub shared: Shared,
     pub update: SharedUpdate,
+    pub os_updates: SharedOsUpdates,
 }
 
 pub struct ApiError(StatusCode, String);
@@ -96,6 +98,7 @@ async fn status(State(state): State<AppState>) -> ApiResult<Response> {
         None => return Err(err(StatusCode::SERVICE_UNAVAILABLE, "still collecting initial sample")),
     };
     snapshot["update"] = json!(*state.update.lock().unwrap());
+    snapshot["os_updates"] = json!(*state.os_updates.lock().unwrap());
     Ok(Json(snapshot).into_response())
 }
 

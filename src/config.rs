@@ -38,6 +38,8 @@ pub struct Config {
     /// GitHub repository releases are fetched from. Empty disables update checks.
     pub update_repo: String,
     pub update_check_hours: u64,
+    /// How often to look for pending OS updates (Windows Update, apt, ...). 0 disables.
+    pub os_update_check_hours: u64,
     /// Named shell commands Home Assistant may trigger. Only commands listed here can be run.
     pub commands: BTreeMap<String, String>,
 }
@@ -63,6 +65,7 @@ impl Default for Config {
             auto_update: true,
             update_repo: "elyerinfox/pc-pulse".into(),
             update_check_hours: 24,
+            os_update_check_hours: 6,
             commands: BTreeMap::new(),
         }
     }

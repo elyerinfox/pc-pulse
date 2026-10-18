@@ -6,6 +6,7 @@ mod discovery;
 mod gpu;
 mod hardware;
 mod notify;
+mod osupdates;
 mod platform;
 mod update;
 
@@ -156,6 +157,8 @@ async fn main() -> Result<()> {
     collector::spawn(cfg.clone(), collector.clone(), shared.clone());
     let update_status = update::new_shared(&cfg);
     update::spawn_checker(cfg.clone(), update_status.clone());
+    let os_updates = Arc::new(Mutex::new(None));
+    osupdates::spawn_checker(cfg.clone(), os_updates.clone());
 
     let _mdns = if cfg.mdns {
         match discovery::advertise(&cfg) {
@@ -177,6 +180,7 @@ async fn main() -> Result<()> {
         collector,
         shared,
         update: update_status,
+        os_updates,
     });
     // After a self-update the previous process may still hold the port for a moment.
     let mut attempt = 0;
